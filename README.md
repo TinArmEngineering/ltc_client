@@ -1,2 +1,2 @@
 # tinarm
-Node creation tool for for TAE workers
+Node creation tool for TAE workers
