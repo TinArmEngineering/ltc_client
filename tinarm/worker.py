@@ -46,7 +46,7 @@ class StandardWorker:
         )
 
         self._channel = self._connection.channel()
-        self._channel.basic_qos(prefetch_count=1)
+        self._channel.basic_qos(prefetch_count=10)
         self._channel.exchange_declare(
             exchange=queue_exchange, exchange_type="topic", durable=True
         )
@@ -88,6 +88,12 @@ class StandardWorker:
 
         # Close connection
         self._connection.close()
+
+    def queue_message(self, routing_key, body):
+        if self._node_name is not None:
+            routing_key = f"{self._node_name}.{routing_key}"
+
+        _rabbitmq_queue_message(self._channel, self._exchange, routing_key, body)
 
 
 def _rabbitmq_connect(node_name, worker_name, host, port, user, password, use_ssl):
@@ -142,6 +148,9 @@ def _threaded_callback(ch, method_frame, _header_frame, body, args):
     )
     t.start()
     thrds.append(t)
+    logger.info(
+        "Thread count: %i of which %i active", len(thrds), threading.active_count()
+    )
 
 
 def _do_threaded_callback(conn, ch, delivery_tag, func, body):
@@ -167,3 +176,18 @@ def _rabbitmq_ack_message(ch, delivery_tag):
         # Channel is already closed, so we can't ACK this message;
         # log and/or do something that makes sense for your app in this case.
         logger.error("Channel is closed, cannot ack message")
+
+
+def _rabbitmq_queue_message(ch, exchange, routing_key, body):
+    if ch.is_open:
+        logger.info(f"Sending to {body} to {routing_key}")
+        ch.basic_publish(
+            exchange=exchange,
+            routing_key=routing_key,
+            body=body,
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # make message persistent
+            ),
+        )
+    else:
+        logger.error("Channel is closed, cannot queue message")
