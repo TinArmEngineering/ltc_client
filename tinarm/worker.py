@@ -6,13 +6,34 @@ import ssl
 import threading
 import time
 
+from python_logging_rabbitmq import RabbitMQHandler
 
-logging.basicConfig(
-    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
-    datefmt="%H:%M:%S",
-    level=logging.INFO,
-)
 logger = logging.getLogger(__name__)
+
+class HostnameFilter(logging.Filter):
+    """Used for logging the hostname
+    https://stackoverflow.com/a/55584223/20882432
+    """
+
+    hostname = platform.node()
+
+    def filter(self, record):
+        record.hostname = HostnameFilter.hostname
+        return True
+
+
+class DefaultIdLogFilter(logging.Filter):
+    """Used for logging the job id"""
+
+    def filter(self, record):
+        if not hasattr(record, "id"):
+            record.id = "NoJobId"
+        return True
+
+
+RABBIT_DEFAULT_PRE_FETCH_COUNT = 1
+RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS = 0.5
+RABBIT_MAX_WAIT_BEFORE_RERTY_SECS = 64
 
 
 class StandardWorker:
@@ -30,11 +51,17 @@ class StandardWorker:
         queue_password,
         queue_use_ssl,
         queue_exchange,
+        queue_prefetch_count=RABBIT_DEFAULT_PRE_FETCH_COUNT,
     ):
         self._threads = []
         self._node_name = node_name
         self._exchange = queue_exchange
 
+        if queue_use_ssl:
+            ssl_options = pika.SSLOptions(context=ssl.create_default_context())
+        else:
+            ssl_options = None
+    
         self._connection = _rabbitmq_connect(
             node_name,
             worker_name,
@@ -42,14 +69,38 @@ class StandardWorker:
             queue_port,
             queue_user,
             queue_password,
-            queue_use_ssl,
+            ssl_options,
         )
 
         self._channel = self._connection.channel()
-        self._channel.basic_qos(prefetch_count=10)
+        self._channel.basic_qos(prefetch_count=queue_prefetch_count)
         self._channel.exchange_declare(
             exchange=queue_exchange, exchange_type="topic", durable=True
         )
+
+        rabbit_handler = RabbitMQHandler(
+            host=queue_host,
+            port=queue_port,
+            username=queue_user,
+            password=queue_password,
+            connection_params={"ssl_options": ssl_options},
+            exchange="amq.topic",
+            declare_exchange=True,
+            routing_key_formatter=lambda r: (
+                "{jobid}.mesher.{type}.{level}".format(
+                    jobid=r.id, type="python", level=r.levelname.lower()
+                )
+            ),
+        )
+
+        rabbit_handler.addFilter(HostnameFilter())
+        rabbit_handler.addFilter(DefaultIdLogFilter())
+        rabbit_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(levelname)s  - %(message)s", datefmt="%H:%M:%S")
+        )
+
+        logger.addHandler(rabbit_handler)
+
 
     def bind(self, queue, routing_key, func):
         if self._node_name is not None:
@@ -67,7 +118,7 @@ class StandardWorker:
         ch.basic_consume(
             queue=queue,
             on_message_callback=functools.partial(
-                _threaded_callback, args=(func, self._connection, ch, self._threads)
+                self._threaded_callback, args=(func, self._connection, ch, self._threads)
             ),
         )
 
@@ -89,6 +140,7 @@ class StandardWorker:
         # Close connection
         self._connection.close()
 
+
     def queue_message(self, routing_key, body):
         if self._node_name is not None:
             routing_key = f"{self._node_name}.{routing_key}"
@@ -96,15 +148,47 @@ class StandardWorker:
         _rabbitmq_queue_message(self._channel, self._exchange, routing_key, body)
 
 
-def _rabbitmq_connect(node_name, worker_name, host, port, user, password, use_ssl):
+    def _queue_next_job_message(self, job_type, body):
+        routing_key = f"{job_type[0]}.{job_type[1]}.{job_type[2]}.{job_type[3]}"
+        self.queue_message(routing_key, body)
+
+
+    def _threaded_callback(self, ch, method_frame, _header_frame, body, args):
+        (func, conn, ch, thrds) = args
+        delivery_tag = method_frame.delivery_tag
+        t = threading.Thread(
+            target=self._do_threaded_callback,
+            args=(conn, ch, delivery_tag, func, body),
+        )
+        t.start()
+        thrds.append(t)
+        logger.info(
+            "Thread count: %i of which %i active", len(thrds), threading.active_count()
+        )
+
+
+    def _do_threaded_callback(self, conn, ch, delivery_tag, func, body):
+        thread_id = threading.get_ident()
+        logger.info(
+            "Thread id: %s Delivery tag: %s Message body: %s", thread_id, delivery_tag, body
+        )
+
+        job_type = func(body)
+
+        if job_type is not None:
+            logger.info(f"next {job_type}")
+            cbq = functools.partial(self.queue_next_job_message, ch, job_type, body)
+            conn.add_callback_threadsafe(cbq)
+
+        cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
+        conn.add_callback_threadsafe(cb)
+
+
+
+def _rabbitmq_connect(node_name, worker_name, host, port, user, password, ssl_options):
     client_properties = {
         "connection_name": f"{worker_name}-{node_name}-{platform.node()}"
     }
-
-    if use_ssl:
-        ssl_options = pika.SSLOptions(context=ssl.create_default_context())
-    else:
-        ssl_options = None
 
     connection_params = pika.ConnectionParameters(
         host=host,
@@ -115,7 +199,7 @@ def _rabbitmq_connect(node_name, worker_name, host, port, user, password, use_ss
         ssl_options=ssl_options,
     )
 
-    sleepTime = 0.5
+    sleepTime = RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS
     connected = False
 
     while not connected:
@@ -125,7 +209,7 @@ def _rabbitmq_connect(node_name, worker_name, host, port, user, password, use_ss
 
         except pika.exceptions.AMQPConnectionError as err:
             sleepTime *= 2
-            if sleepTime >= 32:
+            if sleepTime >= RABBIT_MAX_WAIT_BEFORE_RERTY_SECS:
                 logger.error(f"Failed to connect to the rabbitmq after {sleepTime} s")
                 raise err
             else:
@@ -137,32 +221,6 @@ def _rabbitmq_connect(node_name, worker_name, host, port, user, password, use_ss
             connected = True
 
     return connection
-
-
-def _threaded_callback(ch, method_frame, _header_frame, body, args):
-    (func, conn, ch, thrds) = args
-    delivery_tag = method_frame.delivery_tag
-    t = threading.Thread(
-        target=_do_threaded_callback,
-        args=(conn, ch, delivery_tag, func, body),
-    )
-    t.start()
-    thrds.append(t)
-    logger.info(
-        "Thread count: %i of which %i active", len(thrds), threading.active_count()
-    )
-
-
-def _do_threaded_callback(conn, ch, delivery_tag, func, body):
-    thread_id = threading.get_ident()
-    logger.info(
-        "Thread id: %s Delivery tag: %s Message body: %s", thread_id, delivery_tag, body
-    )
-
-    func(body)
-
-    cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
-    conn.add_callback_threadsafe(cb)
 
 
 def _rabbitmq_ack_message(ch, delivery_tag):
