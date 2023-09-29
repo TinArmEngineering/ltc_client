@@ -180,7 +180,7 @@ class StandardWorker:
 
         if job_type is not None:
             logger.info(f"next {job_type}")
-            cbq = functools.partial(self._queue_next_job_message, ch, job_type, body)
+            cbq = functools.partial(self._queue_next_job_message, job_type, body)
             conn.add_callback_threadsafe(cbq)
 
         cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
