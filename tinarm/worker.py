@@ -115,12 +115,15 @@ class StandardWorker:
             exclusive=False,
         )
         ch.queue_bind(exchange=self._exchange, queue=queue, routing_key=routing_key)
-        ch.basic_consume(
-            queue=queue,
-            on_message_callback=functools.partial(
-                self._threaded_callback, args=(func, self._connection, ch, self._threads)
-            ),
-        )
+
+        # If func was provided, register the callback
+        if func is not None:
+            ch.basic_consume(
+                queue=queue,
+                on_message_callback=functools.partial(
+                    self._threaded_callback, args=(func, self._connection, ch, self._threads)
+                ),
+            )
 
         logger.info(f"Declare::Bind, Q::RK, {queue}::{routing_key}")
 
