@@ -3,12 +3,23 @@ import logging
 import pika
 import platform
 import ssl
+import sys
 import threading
 import time
 
 from python_logging_rabbitmq import RabbitMQHandler
 
-logger = logging.getLogger(__name__)
+
+RABBIT_DEFAULT_PRE_FETCH_COUNT = 1
+RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS = 0.5
+RABBIT_MAX_WAIT_BEFORE_RERTY_SECS = 64
+LOGGING_LEVEL = logging.INFO
+
+
+### Configure Logging
+logger = logging.getLogger()  # root logger
+logger.setLevel(LOGGING_LEVEL)
+
 
 class HostnameFilter(logging.Filter):
     """Used for logging the hostname
@@ -31,9 +42,26 @@ class DefaultIdLogFilter(logging.Filter):
         return True
 
 
-RABBIT_DEFAULT_PRE_FETCH_COUNT = 1
-RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS = 0.5
-RABBIT_MAX_WAIT_BEFORE_RERTY_SECS = 64
+stream_handler = logging.StreamHandler(stream=sys.stdout)
+stream_handler.addFilter(HostnameFilter())
+stream_handler.addFilter(DefaultIdLogFilter())
+stream_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
+    )
+)
+
+file_handler = logging.FileHandler(filename="mesher.log", mode="a")
+file_handler.addFilter(HostnameFilter())
+stream_handler.addFilter(DefaultIdLogFilter())
+file_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(funcName)s - %(message)s"
+    )
+)
+
+logger.addHandler(stream_handler)
+logger.addHandler(file_handler)
 
 
 class StandardWorker:
@@ -151,11 +179,6 @@ class StandardWorker:
         _rabbitmq_queue_message(self._channel, self._exchange, routing_key, body)
 
 
-    def _queue_next_job_message(self, job_type, body):
-        routing_key = f"{job_type[0]}.{job_type[1]}.{job_type[2]}.{job_type[3]}"
-        self.queue_message(routing_key, body)
-
-
     def _threaded_callback(self, ch, method_frame, _header_frame, body, args):
         (func, conn, ch, thrds) = args
         delivery_tag = method_frame.delivery_tag
@@ -176,11 +199,11 @@ class StandardWorker:
             "Thread id: %s Delivery tag: %s Message body: %s", thread_id, delivery_tag, body
         )
 
-        job_type = func(body)
+        next_routing_key = func(body)
 
-        if job_type is not None:
-            logger.info(f"next {job_type}")
-            cbq = functools.partial(self._queue_next_job_message, job_type, body)
+        if next_routing_key is not None:
+            logger.info(f"next routing key: {next_routing_key}")
+            cbq = functools.partial(self.queue_message, next_routing_key, body)
             conn.add_callback_threadsafe(cbq)
 
         cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
