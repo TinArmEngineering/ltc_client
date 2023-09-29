@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-import worker
+
+from tinarm.worker import StandardWorker
 
 __title__ = "TINARM - Node creation tool for TAE workers"
 __version__ = "0.1.0"

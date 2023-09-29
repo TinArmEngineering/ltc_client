@@ -1,11 +1,10 @@
 import setuptools
-import tinarm
 
 setuptools.setup(
     name="tinarm",
-    version=tinarm.__version__,
-    author=tinarm.__author__,
-    description=tinarm.__title__,
+    version="0.1.0",
+    author="Martin West, Chris Wallis",
+    description="TINARM - Node creation tool for TAE workers",
     url="https://github.com/TinArmEngineering/tinarm",
     author_email="chris@tinarmengineering.com",
     license="MIT",
