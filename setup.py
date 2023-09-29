@@ -12,7 +12,6 @@ setuptools.setup(
     packages=["tinarm"],
     install_requires=[
         "pika",
-        "boto3",
         "python_logging_rabbitmq"
     ],
     classifiers=[

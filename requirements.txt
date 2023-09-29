@@ -1,3 +1,2 @@
 pika
-boto3
 python_logging_rabbitmq
