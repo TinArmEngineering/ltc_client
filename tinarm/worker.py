@@ -71,7 +71,6 @@ class StandardWorker:
 
     def __init__(
         self,
-        node_name,
         worker_name,
         queue_host,
         queue_port,
@@ -82,16 +81,14 @@ class StandardWorker:
         queue_prefetch_count=RABBIT_DEFAULT_PRE_FETCH_COUNT,
     ):
         self._threads = []
-        self._node_name = node_name
         self._exchange = queue_exchange
 
         if queue_use_ssl:
             ssl_options = pika.SSLOptions(context=ssl.create_default_context())
         else:
             ssl_options = None
-    
+
         self._connection = _rabbitmq_connect(
-            node_name,
             worker_name,
             queue_host,
             queue_port,
@@ -124,17 +121,14 @@ class StandardWorker:
         rabbit_handler.addFilter(HostnameFilter())
         rabbit_handler.addFilter(DefaultIdLogFilter())
         rabbit_handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s  - %(message)s", datefmt="%H:%M:%S")
+            logging.Formatter(
+                "%(asctime)s - %(levelname)s  - %(message)s", datefmt="%H:%M:%S"
+            )
         )
 
         logger.addHandler(rabbit_handler)
 
-
     def bind(self, queue, routing_key, func):
-        if self._node_name is not None:
-            queue = f"{self._node_name}.{queue}"
-            routing_key = f"{self._node_name}.{routing_key}"
-
         ch = self._channel
 
         ch.queue_declare(
@@ -149,7 +143,8 @@ class StandardWorker:
             ch.basic_consume(
                 queue=queue,
                 on_message_callback=functools.partial(
-                    self._threaded_callback, args=(func, self._connection, ch, self._threads)
+                    self._threaded_callback,
+                    args=(func, self._connection, ch, self._threads),
                 ),
             )
 
@@ -171,13 +166,8 @@ class StandardWorker:
         # Close connection
         self._connection.close()
 
-
     def queue_message(self, routing_key, body):
-        if self._node_name is not None:
-            routing_key = f"{self._node_name}.{routing_key}"
-
         _rabbitmq_queue_message(self._channel, self._exchange, routing_key, body)
-
 
     def _threaded_callback(self, ch, method_frame, _header_frame, body, args):
         (func, conn, ch, thrds) = args
@@ -192,11 +182,13 @@ class StandardWorker:
             "Thread count: %i of which %i active", len(thrds), threading.active_count()
         )
 
-
     def _do_threaded_callback(self, conn, ch, delivery_tag, func, body):
         thread_id = threading.get_ident()
         logger.info(
-            "Thread id: %s Delivery tag: %s Message body: %s", thread_id, delivery_tag, body
+            "Thread id: %s Delivery tag: %s Message body: %s",
+            thread_id,
+            delivery_tag,
+            body,
         )
 
         next_routing_key = func(body)
@@ -208,7 +200,6 @@ class StandardWorker:
 
         cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
         conn.add_callback_threadsafe(cb)
-
 
 
 def _rabbitmq_connect(node_name, worker_name, host, port, user, password, ssl_options):
