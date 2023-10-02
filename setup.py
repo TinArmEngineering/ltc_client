@@ -8,7 +8,7 @@ setuptools.setup(
     url="https://github.com/TinArmEngineering/tinarm",
     author_email="chris@tinarmengineering.com",
     license="MIT",
-    packages=["tinarm"],
+    packages=["tinarm", "tinarm.pbmodel"],
     install_requires=[
         "pika",
         "protobuf",
