@@ -1,6 +1,6 @@
 import requests
 
-from pbmodel import file_pb2
+from tinarm.pbmodel import file_pb2
 
 class Api:
     """
