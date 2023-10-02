@@ -8,12 +8,12 @@ setuptools.setup(
     url="https://github.com/TinArmEngineering/tinarm",
     author_email="chris@tinarmengineering.com",
     license="MIT",
-    packages=["tinarm"],
+    packages=["tinarm", "tinarm.pbmodel"],
     install_requires=[
-        "requests",
         "pika",
         "protobuf",
-        "python_logging_rabbitmq"
+        "python_logging_rabbitmq",
+        "requests"
     ],
     classifiers=[
         "Development Status :: 1 - Planning",
