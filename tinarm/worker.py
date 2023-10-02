@@ -202,10 +202,8 @@ class StandardWorker:
         conn.add_callback_threadsafe(cb)
 
 
-def _rabbitmq_connect(node_name, worker_name, host, port, user, password, ssl_options):
-    client_properties = {
-        "connection_name": f"{worker_name}-{node_name}-{platform.node()}"
-    }
+def _rabbitmq_connect(worker_name, host, port, user, password, ssl_options):
+    client_properties = {"connection_name": f"{worker_name}-{platform.node()}"}
 
     connection_params = pika.ConnectionParameters(
         host=host,
