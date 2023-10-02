@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from tinarm.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
+from tinarm.api import Api
 
 __title__ = "TINARM - Node creation tool for TAE workers"
 __version__ = "0.1.0"
