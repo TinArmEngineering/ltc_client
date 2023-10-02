@@ -17,7 +17,7 @@ LOGGING_LEVEL = logging.INFO
 
 
 ### Configure Logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()  # get the root logger?
 logger.setLevel(LOGGING_LEVEL)
 
 
@@ -53,7 +53,7 @@ stream_handler.setFormatter(
 
 # file_handler = logging.FileHandler(filename="mesher.log", mode="a")
 # file_handler.addFilter(HostnameFilter())
-# stream_handler.addFilter(DefaultIdLogFilter())
+# file_handler.addFilter(DefaultIdLogFilter())
 # file_handler.setFormatter(
 #     logging.Formatter(
 #         "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(funcName)s - %(message)s"
