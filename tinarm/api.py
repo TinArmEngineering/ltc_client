@@ -18,3 +18,17 @@ class TaeApi:
             url=f"{self.root_url}/jobs/{job_id}?apikey={self.api_key}",
         )
         return response.json()
+    
+    def post_job_artifact(self, job_id):
+        """
+        Post an artifact to a job
+        """
+        response = requests.post(
+            url=f"{self.root_url}/jobs/{job_id}/artifacts?apikey={self.api_key}",
+            json={
+                "type": "test",
+                "url": "monster+file://lala/looloo/test.txt",
+            },
+        )
+        return response.json()
+
