@@ -10,7 +10,9 @@ setuptools.setup(
     license="MIT",
     packages=["tinarm"],
     install_requires=[
+        "requests",
         "pika",
+        "protobuf",
         "python_logging_rabbitmq"
     ],
     classifiers=[
