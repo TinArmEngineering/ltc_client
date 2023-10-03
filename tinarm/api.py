@@ -41,7 +41,7 @@ class Api:
                 return artifact
     
 
-    def create_job_artifact(self, job_id, type, filename, promote=False):
+    def create_job_artifact(self, job_id, type, url, promote=False):
         """
         Post an artifact to a job
         """
@@ -49,11 +49,33 @@ class Api:
             url=f"{self._root_url}/jobs/{job_id}/artifacts?promote={promote}&apikey={self._api_key}",
             json={
                 "type": type,
-                "url": f"file://{self._node_id}/{filename}",
+                "url": url,
             },
         )
         return response.json()
         
+    
+    def create_job_artifact_from_file(self, job_id, type, filename, promote=False):
+        """
+        Post an artifact to a job
+        """
+        return self.create_job_artifact(
+            job_id, 
+            type, 
+            f"file://{self._node_id}/{filename}", 
+            promote)
+    
+    
+    def update_job_artifact(self, job_id, artifact_id, artifact ):
+        """
+        Update an artifact
+        """
+        response = requests.put(
+            url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}?apikey={self._api_key}",
+            json=artifact
+        )
+        return response.json()
+
 
     def promote_job_artifact(self, job_id, artifact_id):
         """
@@ -63,24 +85,3 @@ class Api:
             url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}/promote?apikey={self._api_key}",
         )
         return response.json()
-    
-
-
-def _read_file(filename, mode):
-    with open(filename, mode) as f:
-        return f.read()
-
-
-def _get_file_protobuf(filename, filetype):
-    # read the contents of test_file.txt into a string
-    fileContent = _read_file(filename, "rb")
-
-    # Create a protobuf object
-    filePbuf = file_pb2.CreateFileRequest()
-    filePbuf.name = filename
-    filePbuf.content = fileContent
-    filePbuf.type = filetype
-    filePbuf.description = filetype
-
-    return filePbuf
-    
