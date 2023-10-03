@@ -46,7 +46,7 @@ class Api:
         Post an artifact to a job
         """
         response = requests.post(
-            url="{self._root_url}/jobs/{job_id}artifacts?promote={promote}apikey={self._api_key}",
+            url="{self._root_url}/jobs/{job_id}artifacts?promote={promote}&apikey={self._api_key}",
             json={
                 "type": type,
                 "url": f"file://{self._node_id}/{filename}",
