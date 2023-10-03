@@ -1,7 +1,5 @@
 import requests
 
-from tinarm.pbmodel import file_pb2
-
 class Api:
     """
     The TAE API
@@ -43,35 +41,18 @@ class Api:
                 return artifact
     
 
-    def create_job_artifact(self, job_id, type, filename, immediate_promote=False):
+    def create_job_artifact(self, job_id, type, filename, promote=False):
         """
         Post an artifact to a job
         """
-        url=f"{self._root_url}/jobs/{job_id}artifacts?apikey={self._api_key}",
-
-        if immediate_promote:
-            testFilePb = _get_file_protobuf(filename, type)
-
-            response = requests.post(
-                url=url,
-                data=testFilePb.SerializeToString(),
-                headers={"Content-Type": "application/x-protobuf"},
-            )
-
-            # Read the raw response body
-            respPb = file_pb2.CreateFileResponse()
-            respPb.ParseFromString(response.content)
-
-            return respPb.id
-        else:
-            response = requests.post(
-                url=url,
-                json={
-                    "type": type,
-                    "url": f"file://{self._node_id}/{filename}",
-                },
-            )
-            return response.json()["id"]
+        response = requests.post(
+            url="{self._root_url}/jobs/{job_id}artifacts?promote={promote}apikey={self._api_key}",
+            json={
+                "type": type,
+                "url": f"file://{self._node_id}/{filename}",
+            },
+        )
+        return response.json()
         
 
     def promote_job_artifact(self, job_id, artifact_id):
