@@ -11,7 +11,7 @@ setuptools.setup(
     packages=["tinarm"],
     install_requires=[
         "pika",
-        "python_logging_rabbitmq"
+        "python_logging_rabbitmq",
         "requests",
     ],
     classifiers=[
