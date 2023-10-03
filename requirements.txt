@@ -1,4 +1,3 @@
 pika
-protobuf
 python_logging_rabbitmq
 requests

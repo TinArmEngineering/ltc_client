@@ -12,6 +12,7 @@ setuptools.setup(
     install_requires=[
         "pika",
         "python_logging_rabbitmq"
+        "requests",
     ],
     classifiers=[
         "Development Status :: 1 - Planning",
