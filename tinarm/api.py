@@ -66,7 +66,7 @@ class Api:
             promote)
     
     
-    def update_job_artifact(self, job_id, artifact_id, artifact ):
+    def update_job_artifact(self, job_id, artifact_id, artifact):
         """
         Update an artifact
         """
