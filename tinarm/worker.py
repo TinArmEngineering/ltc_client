@@ -98,7 +98,7 @@ class StandardWorker:
         )
 
         self._channel = self._connection.channel()
-        self._channel.basic_qos(prefetch_count=queue_prefetch_count)
+        self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=True)
         self._channel.exchange_declare(
             exchange=queue_exchange, exchange_type="topic", durable=True
         )
