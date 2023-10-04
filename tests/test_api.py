@@ -20,29 +20,34 @@ JOB_ARTIFACT_FILE_PATH = "/lala/test_plot.png"
 JOB_ARTIFACT_FILE_URL = "file://testnode/" + JOB_ARTIFACT_FILE_PATH
 JOB_ARTIFACT_REMOTE_URL = "http://example.com/test_plot.png"
 
+api = tinarm.Api(NODE_ID, ROOT_URL, API_KEY)
 
 class ApiTestCase(unittest.TestCase):
 
     @mock.patch("tinarm.api.requests")
-    def test_all(self, mock_requests):
-        a = tinarm.Api(NODE_ID, ROOT_URL, API_KEY)
-
-        a.get_job(JOB_ID)
+    def test_get_job(self, mock_requests):
+        api.get_job(JOB_ID)
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
 
-        a.update_job_status(JOB_ID, JOB_STATUS)
+    @mock.patch("tinarm.api.requests")
+    def test_update_job_status(self, mock_requests):
+        api.update_job_status(JOB_ID, JOB_STATUS)
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?apikey={API_KEY}"
         )
 
-        a.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+    @mock.patch("tinarm.api.requests")
+    def test_get_job_artifact(self, mock_requests):
+        api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
 
-        a.create_job_artifact(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_REMOTE_URL)
+    @mock.patch("tinarm.api.requests")
+    def test_create_job_artifact(self, mock_requests):
+        api.create_job_artifact(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_REMOTE_URL)
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
             json={
@@ -51,7 +56,9 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-        a.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH)
+    @mock.patch("tinarm.api.requests")
+    def test_create_job_artifact_from_file(self, mock_requests):
+        api.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH)
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
             json={
@@ -60,7 +67,9 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-        a.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True)
+    @mock.patch("tinarm.api.requests")
+    def test_update_job_artifact(self, mock_requests):
+        api.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True)
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=True&apikey={API_KEY}",
             json={
@@ -69,7 +78,9 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-        a.update_job_artifact(JOB_ID, JOB_ARTIFACT_ID, {"type": JOB_ARTIFACT_TYPE, "url": JOB_ARTIFACT_REMOTE_URL} )
+    @mock.patch("tinarm.api.requests")
+    def test_update_job_artifact(self, mock_requests):
+        api.update_job_artifact(JOB_ID, JOB_ARTIFACT_ID, {"type": JOB_ARTIFACT_TYPE, "url": JOB_ARTIFACT_REMOTE_URL} )
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}?apikey={API_KEY}",
             json={
@@ -78,7 +89,9 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-        a.promote_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+    @mock.patch("tinarm.api.requests")
+    def test_promote_job_artifact(self, mock_requests):
+        api.promote_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote?apikey={API_KEY}",
         )
