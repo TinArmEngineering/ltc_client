@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="tinarm",
-    version="0.1.0",
+    version="0.1",
     author="Martin West, Chris Wallis",
     description="TINARM - Node creation tool for TAE workers",
     url="https://github.com/TinArmEngineering/tinarm",
@@ -15,7 +15,7 @@ setuptools.setup(
         "requests",
     ],
     classifiers=[
-        "Development Status :: 1 - Planning",
+        "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
