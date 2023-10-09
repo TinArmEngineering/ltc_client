@@ -19,6 +19,8 @@ LOGGING_LEVEL = logging.INFO
 ### Configure Logging
 logger = logging.getLogger()  # get the root logger?
 logger.setLevel(LOGGING_LEVEL)
+tld = threading.local()
+tld.job_id = "NoJobId"
 
 
 class HostnameFilter(logging.Filter):
@@ -37,10 +39,12 @@ class DefaultIdLogFilter(logging.Filter):
     """Used for logging the job id"""
 
     def filter(self, record):
-        if not hasattr(record, "id"):
+        if not hasattr(tld, "jobid"):
             record.id = "NoJobId"
+        else:
+            record.id = tld.job_id
         return True
-
+    
 
 stream_handler = logging.StreamHandler(stream=sys.stdout)
 stream_handler.addFilter(HostnameFilter())
