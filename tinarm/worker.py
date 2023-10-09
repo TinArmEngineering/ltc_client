@@ -40,7 +40,7 @@ class DefaultIdLogFilter(logging.Filter):
     """Used for logging the job id"""
 
     def filter(self, record):
-        if not hasattr(tld, "jobid"):
+        if not hasattr(tld, "job_id"):
             record.id = "NoJobId"
         else:
             record.id = tld.job_id
