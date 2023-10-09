@@ -196,8 +196,11 @@ class StandardWorker:
             body,
         )
 
+        logger.info(f"checking body for a job id")
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
+
+        logger.info(f"setting this thread: {thread_id} job id to: {tld.job_id}")
 
         next_routing_key = func(body)
 
