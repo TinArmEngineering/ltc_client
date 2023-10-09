@@ -1,4 +1,5 @@
 import functools
+import json
 import logging
 import pika
 import platform
@@ -176,6 +177,10 @@ class StandardWorker:
     def _threaded_callback(self, ch, method_frame, _header_frame, body, args):
         (func, conn, ch, thrds) = args
         delivery_tag = method_frame.delivery_tag
+
+        payload = json.loads(body.decode())
+        tld.job_id = payload["id"]
+
         t = threading.Thread(
             target=self._do_threaded_callback,
             args=(conn, ch, delivery_tag, func, body),
