@@ -23,8 +23,8 @@ class Api:
         self._root_url = root_url
         self._api_key = api_key
 
-        logger.debug(f"node_id: {self._node_id}")
-        logger.debug(f"root_url: {self._root_url}")
+        logger.info(f"node_id: {self._node_id}")
+        logger.info(f"root_url: {self._root_url}")
         
 
 
@@ -44,7 +44,7 @@ class Api:
         Update a job status
         """
         url=f"{self._root_url}/jobs/{job_id}/status/{status}?nodeid={self._node_id}&apikey={self._api_key}"
-        logger.debug(f"Updating job status: {url}")
+        logger.info(f"Updating job status: {url}")
 
         response = requests.put(url=url)
         return response.json()
