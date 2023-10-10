@@ -18,16 +18,18 @@ class Api:
         response = requests.get(
             url=f"{self._root_url}/jobs/{job_id}?apikey={self._api_key}",
         )
+        response.raise_for_status()
         return response.json()
     
 
-    def update_job_status(self, job_id, status):
+    def update_job_status(self, job_id, node_id, status):
         """
         Update a job status
         """
         response = requests.put(
-            url=f"{self._root_url}/jobs/{job_id}/status/{status}?apikey={self._api_key}"
+            url=f"{self._root_url}/jobs/{job_id}/status/{status}?nodeid={node_id}&apikey={self._api_key}"
         )
+        response.raise_for_status()
         return response.json()
     
 
@@ -52,6 +54,7 @@ class Api:
                 "url": url,
             },
         )
+        response.raise_for_status()
         return response.json()
         
     
@@ -74,6 +77,7 @@ class Api:
             url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}?apikey={self._api_key}",
             json=artifact
         )
+        response.raise_for_status()
         return response.json()
 
 
@@ -84,4 +88,5 @@ class Api:
         response = requests.put(
             url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}/promote?apikey={self._api_key}",
         )
+        response.raise_for_status()
         return response.json()
