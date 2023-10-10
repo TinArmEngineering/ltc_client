@@ -1,4 +1,7 @@
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 class Api:
     """
@@ -6,9 +9,17 @@ class Api:
     """
 
     def __init__(self, node_id, root_url, api_key):
+        """
+        Initialize the API
+        """
+
         self._node_id = node_id
         self._root_url = root_url
         self._api_key = api_key
+
+        logger.debug(f"node_id: {self._node_id}")
+        logger.debug(f"root_url: {self._root_url}")
+        
 
 
     def get_job(self, job_id):
@@ -26,10 +37,10 @@ class Api:
         """
         Update a job status
         """
-        response = requests.put(
-            url=f"{self._root_url}/jobs/{job_id}/status/{status}?nodeid={self._node_id}&apikey={self._api_key}"
-        )
-        response.raise_for_status()
+        url=f"{self._root_url}/jobs/{job_id}/status/{status}?nodeid={self._node_id}&apikey={self._api_key}"
+        logger.debug(f"Updating job status: {url}")
+
+        response = requests.put(url=url)
         return response.json()
     
 
