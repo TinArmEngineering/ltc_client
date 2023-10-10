@@ -1,7 +1,13 @@
 import logging
 import requests
 
-logger = logging.getLogger(__name__)
+LOGGING_LEVEL = logging.INFO
+
+
+### Configure Logging
+logger = logging.getLogger()
+logger.setLevel(LOGGING_LEVEL)
+
 
 class Api:
     """
