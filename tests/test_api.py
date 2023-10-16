@@ -18,7 +18,7 @@ JOB_ARTIFACT_ID = "6544"
 JOB_ARTIFACT_TYPE = "TEST_PLOT"
 JOB_ARTIFACT_FILE_PATH = "/lala/test_plot.png"
 JOB_ARTIFACT_FILE_URL = "file://testnode/" + JOB_ARTIFACT_FILE_PATH
-JOB_ARTIFACT_REMOTE_URL = "http://example.com/test_plot.png"
+JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 
 api = tinarm.Api(NODE_ID, ROOT_URL, API_KEY)
 
@@ -39,11 +39,39 @@ class ApiTestCase(unittest.TestCase):
         )
 
     @mock.patch("tinarm.api.requests")
-    def test_get_job_artifact(self, mock_requests):
-        api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+    def test_get_job_artifact_not_found(self, mock_requests):
+        with self.assertRaises(Exception):
+            api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
+
+    @mock.patch("tinarm.api.requests")
+    def test_get_promoted_job_artifact_raise(self, mock_requests):
+        with self.assertRaises(Exception):
+            api.get_promoted_job_artifact('12', '34')
+        mock_requests.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/12?apikey={API_KEY}",
+        )
+
+    @mock.patch("tinarm.api.requests")
+    def test_get_promoted_job_artifact(self, mock_requests):
+
+        mock_requests.get.return_value.json.return_value = {
+            "artifacts": [ {
+                    "id": JOB_ARTIFACT_ID,
+                    "url": JOB_ARTIFACT_REMOTE_URL,
+                }
+            ]
+        }
+
+        # Call get_promoted_job_artifact fassing a callback function
+        api.get_promoted_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+
+        mock_requests.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
+        )
+        
 
     @mock.patch("tinarm.api.requests")
     def test_create_job_artifact(self, mock_requests):
@@ -95,6 +123,7 @@ class ApiTestCase(unittest.TestCase):
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote?apikey={API_KEY}",
         )
+
 
     
 if __name__ == "__main__":

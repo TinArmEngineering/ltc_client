@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 import requests
 
 LOGGING_LEVEL = logging.INFO
@@ -52,13 +54,33 @@ class Api:
 
     def get_job_artifact(self, job_id, artifact_id):
         """
-        Get a job artifact
+        Get job artifact
         """
         job = self.get_job(job_id)
         for artifact in job["artifacts"]:
             if artifact["id"] == artifact_id:
                 return artifact
+            
+        raise Exception(f"Artifact {artifact_id} not found on job {job_id}")
     
+
+    def get_promoted_job_artifact(self, job_id, artifact_id):
+
+        # Get the artifact
+        artifact = self.get_job_artifact(job_id, artifact_id)
+
+        # If the url starts with https, it's already promoted
+        if artifact["url"].startswith("https"):
+            return artifact
+      
+        for i in range(0, 10):
+            time.sleep(5)
+            artifact = self.get_job_artifact(job_id, artifact_id)
+            if artifact["url"].startswith("https"):
+                return artifact
+
+        raise Exception(f"Artifact {artifact_id} on job {job_id} could not be promoted in a reasonable time")
+
 
     def create_job_artifact(self, job_id, type, url, promote=False):
         """
