@@ -129,3 +129,14 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
+
+
+    def delete_job(self, job_id, hard=False):
+        """
+        Delete a job
+        """
+        response = requests.delete(
+            url=f"{self._root_url}/jobs/{job_id}?hard={hard}&apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return
