@@ -45,7 +45,7 @@ class Api:
         """
         Update a job status
         """
-        url=f"{self._root_url}/jobs/{job_id}/status/{status}?nodeid={self._node_id}&apikey={self._api_key}"
+        url=f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}"
         logger.info(f"Updating job status: {url}")
 
         response = requests.put(url=url)

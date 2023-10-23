@@ -35,7 +35,7 @@ class ApiTestCase(unittest.TestCase):
     def test_update_job_status(self, mock_requests):
         api.update_job_status(JOB_ID, JOB_STATUS)
         mock_requests.put.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?nodeid={NODE_ID}&apikey={API_KEY}"
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?node_id={NODE_ID}&apikey={API_KEY}"
         )
 
     @mock.patch("tinarm.api.requests")
