@@ -18,41 +18,24 @@ class Unit:
     def to_dict(self):
         return {"name": self.name, "exponent": self.exponent}
 
-    def __repr__(self):
-        return f"Unit(name={self.name}, exponent={self.exponent})"
-
-    def __str__(self):
-        return self.__repr__()
-
 
 class Quantity:
-    def __init__(self, value, units):
-        self.value = value
+    def __init__(self, magnitude, units: list[Unit]):
+        self.magnitude = magnitude
         self.units = units
 
     def to_dict(self):
-        return {"value": self.value, "units": [unit.to_dict() for unit in self.units]}
-
-    def __repr__(self):
-        return f"Quantity(value={self.value}, units={self.units})"
-
-    def __str__(self):
-        return self.__repr__()
+        return {"magnitude": self.magnitude, "units": self.units}
 
 
 class NameQuantityPair:
-    def __init__(self, name, quantity):
+    def __init__(self, section, name, value: Quantity):
+        self.section = section
         self.name = name
-        self.quantity = quantity
+        self.value = value
 
     def to_dict(self):
-        return {"name": self.name, "quantity": self.quantity.to_dict()}
-
-    def __repr__(self):
-        return f"NameQuantityPair(name={self.name}, quantity={self.quantity})"
-
-    def __str__(self):
-        return self.__repr__()
+        return {"section": self.section, "name": self.name, "value": self.value}
 
 
 class Api:
