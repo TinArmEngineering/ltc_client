@@ -16,7 +16,10 @@ class Unit:
         self.exponent = exponent
 
     def to_dict(self):
-        return {"name": self.name, "exponent": self.exponent}
+        return {
+            "name": self.name,
+            "exponent": self.exponent,
+        }
 
 
 class Quantity:
@@ -25,7 +28,10 @@ class Quantity:
         self.units = units
 
     def to_dict(self):
-        return {"magnitude": self.magnitude, "units": self.units}
+        return {
+            "magnitude": self.magnitude,
+            "units": [u.to_dict() for u in self.units],
+        }
 
 
 class NameQuantityPair:
@@ -35,7 +41,11 @@ class NameQuantityPair:
         self.value = value
 
     def to_dict(self):
-        return {"section": self.section, "name": self.name, "value": self.value}
+        return {
+            "section": self.section,
+            "name": self.name,
+            "value": self.value.to_dict(),
+        }
 
 
 class Api:
