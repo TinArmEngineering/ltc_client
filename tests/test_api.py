@@ -22,8 +22,8 @@ JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 
 api = tinarm.Api(NODE_ID, ROOT_URL, API_KEY)
 
-class ApiTestCase(unittest.TestCase):
 
+class ApiTestCase(unittest.TestCase):
     @mock.patch("tinarm.api.requests")
     def test_get_job(self, mock_requests):
         api.get_job(JOB_ID)
@@ -49,16 +49,16 @@ class ApiTestCase(unittest.TestCase):
     @mock.patch("tinarm.api.requests")
     def test_get_promoted_job_artifact_raise(self, mock_requests):
         with self.assertRaises(Exception):
-            api.get_promoted_job_artifact('12', '34')
+            api.get_promoted_job_artifact("12", "34")
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/12?apikey={API_KEY}",
         )
 
     @mock.patch("tinarm.api.requests")
     def test_get_promoted_job_artifact(self, mock_requests):
-
         mock_requests.get.return_value.json.return_value = {
-            "artifacts": [ {
+            "artifacts": [
+                {
                     "id": JOB_ARTIFACT_ID,
                     "url": JOB_ARTIFACT_REMOTE_URL,
                 }
@@ -71,7 +71,6 @@ class ApiTestCase(unittest.TestCase):
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
-        
 
     @mock.patch("tinarm.api.requests")
     def test_create_job_artifact(self, mock_requests):
@@ -86,7 +85,9 @@ class ApiTestCase(unittest.TestCase):
 
     @mock.patch("tinarm.api.requests")
     def test_create_job_artifact_from_file(self, mock_requests):
-        api.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH)
+        api.create_job_artifact_from_file(
+            JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH
+        )
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
             json={
@@ -97,7 +98,9 @@ class ApiTestCase(unittest.TestCase):
 
     @mock.patch("tinarm.api.requests")
     def test_update_job_artifact(self, mock_requests):
-        api.create_job_artifact_from_file(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True)
+        api.create_job_artifact_from_file(
+            JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True
+        )
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=True&apikey={API_KEY}",
             json={
@@ -108,7 +111,11 @@ class ApiTestCase(unittest.TestCase):
 
     @mock.patch("tinarm.api.requests")
     def test_update_job_artifact(self, mock_requests):
-        api.update_job_artifact(JOB_ID, JOB_ARTIFACT_ID, {"type": JOB_ARTIFACT_TYPE, "url": JOB_ARTIFACT_REMOTE_URL} )
+        api.update_job_artifact(
+            JOB_ID,
+            JOB_ARTIFACT_ID,
+            {"type": JOB_ARTIFACT_TYPE, "url": JOB_ARTIFACT_REMOTE_URL},
+        )
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}?apikey={API_KEY}",
             json={
@@ -124,8 +131,18 @@ class ApiTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote?apikey={API_KEY}",
         )
 
+    def test_tae_model():
+        jobdata = tinarm.NameQuantityPair(
+            "section",
+            "name",
+            tinarm.Quantity(
+                4242, [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
+            ),
+        )
 
-    
+        asDict = jobdata.to_dict()
+
+
 if __name__ == "__main__":
     if is_running_under_teamcity():
         runner = TeamcityTestRunner()
