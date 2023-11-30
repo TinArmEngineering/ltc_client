@@ -131,7 +131,7 @@ class ApiTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote?apikey={API_KEY}",
         )
 
-    def test_tae_model():
+    def test_tae_model(self):
         jobdata = tinarm.NameQuantityPair(
             "section",
             "name",
