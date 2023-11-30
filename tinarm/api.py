@@ -1,5 +1,4 @@
 import logging
-import threading
 import time
 import requests
 
@@ -9,6 +8,51 @@ LOGGING_LEVEL = logging.INFO
 ### Configure Logging
 logger = logging.getLogger()
 logger.setLevel(LOGGING_LEVEL)
+
+
+class Unit:
+    def __init__(self, name, exponent):
+        self.name = name
+        self.exponent = exponent
+
+    def to_dict(self):
+        return {"name": self.name, "exponent": self.exponent}
+
+    def __repr__(self):
+        return f"Unit(name={self.name}, exponent={self.exponent})"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class Quantity:
+    def __init__(self, value, units):
+        self.value = value
+        self.units = units
+
+    def to_dict(self):
+        return {"value": self.value, "units": [unit.to_dict() for unit in self.units]}
+
+    def __repr__(self):
+        return f"Quantity(value={self.value}, units={self.units})"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class NameQuantityPair:
+    def __init__(self, name, quantity):
+        self.name = name
+        self.quantity = quantity
+
+    def to_dict(self):
+        return {"name": self.name, "quantity": self.quantity.to_dict()}
+
+    def __repr__(self):
+        return f"NameQuantityPair(name={self.name}, quantity={self.quantity})"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class Api:
@@ -27,8 +71,6 @@ class Api:
 
         logger.info(f"node_id: {self._node_id}")
         logger.info(f"root_url: {self._root_url}")
-        
-
 
     def get_job(self, job_id):
         """
@@ -39,18 +81,16 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
-    
 
     def update_job_status(self, job_id, status):
         """
         Update a job status
         """
-        url=f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}"
+        url = f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}"
         logger.info(f"Updating job status: {url}")
 
         response = requests.put(url=url)
         return response.json()
-    
 
     def get_job_artifact(self, job_id, artifact_id):
         """
@@ -60,27 +100,26 @@ class Api:
         for artifact in job["artifacts"]:
             if artifact["id"] == artifact_id:
                 return artifact
-            
+
         raise Exception(f"Artifact {artifact_id} not found on job {job_id}")
-    
 
     def get_promoted_job_artifact(self, job_id, artifact_id):
-
         # Get the artifact
         artifact = self.get_job_artifact(job_id, artifact_id)
 
         # If the url starts with https, it's already promoted
         if artifact["url"].startswith("https"):
             return artifact
-      
+
         for i in range(0, 10):
             time.sleep(5)
             artifact = self.get_job_artifact(job_id, artifact_id)
             if artifact["url"].startswith("https"):
                 return artifact
 
-        raise Exception(f"Artifact {artifact_id} on job {job_id} could not be promoted in a reasonable time")
-
+        raise Exception(
+            f"Artifact {artifact_id} on job {job_id} could not be promoted in a reasonable time"
+        )
 
     def create_job_artifact(self, job_id, type, url, promote=False):
         """
@@ -95,30 +134,25 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
-        
-    
+
     def create_job_artifact_from_file(self, job_id, type, filename, promote=False):
         """
         Post an artifact to a job
         """
         return self.create_job_artifact(
-            job_id, 
-            type, 
-            f"file://{self._node_id}/{filename}", 
-            promote)
-    
-    
+            job_id, type, f"file://{self._node_id}/{filename}", promote
+        )
+
     def update_job_artifact(self, job_id, artifact_id, artifact):
         """
         Update an artifact
         """
         response = requests.put(
             url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}?apikey={self._api_key}",
-            json=artifact
+            json=artifact,
         )
         response.raise_for_status()
         return response.json()
-
 
     def promote_job_artifact(self, job_id, artifact_id):
         """
@@ -130,7 +164,6 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-
     def delete_job(self, job_id, hard=False):
         """
         Delete a job
@@ -140,3 +173,34 @@ class Api:
         )
         response.raise_for_status()
         return
+
+    def create_job_data(self, job_id: str, data: NameQuantityPair):
+        """
+        Create job data
+        """
+        response = requests.post(
+            url=f"{self._root_url}/jobs/{job_id}/data?apikey={self._api_key}",
+            json=data.to_dict(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def update_job_data(self, job_id: str, data_name: str, data: NameQuantityPair):
+        """
+        Update job data
+        """
+        response = requests.put(
+            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}?apikey={self._api_key}",
+            json=data.to_dict(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def delete_job_data(self, job_id: str, data_name: str):
+        """
+        Delete job data
+        """
+        response = requests.delete(
+            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}?apikey={self._api_key}",
+        )
+        response.raise_for_status()
