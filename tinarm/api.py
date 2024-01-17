@@ -25,7 +25,7 @@ class Unit:
 class Quantity:
     def __init__(self, magnitude, units: list[Unit]):
         self.magnitude = magnitude
-        self.units = [Unit(*u) for u in units]
+        self.units = [Unit(*u) if type(u) != Unit else u for u in units]
 
     def to_dict(self):
         return {"magnitude": self.magnitude, "units": [u.to_dict() for u in self.units]}

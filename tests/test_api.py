@@ -2,6 +2,7 @@ import os
 import sys
 import mock
 import unittest
+import pint
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
@@ -138,6 +139,16 @@ class ApiTestCase(unittest.TestCase):
             tinarm.Quantity(
                 4242, [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
             ),
+        )
+
+        asDict = jobdata.to_dict()
+
+    def test_tae_model_from_pint(self):
+        q = pint.UnitRegistry()
+        jobdata = tinarm.NameQuantityPair(
+            "section",
+            "name",
+            tinarm.Quantity(*(422 * q.m / q.s).to_tuple()),
         )
 
         asDict = jobdata.to_dict()
