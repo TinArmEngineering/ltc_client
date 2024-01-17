@@ -11,7 +11,7 @@ logger.setLevel(LOGGING_LEVEL)
 
 
 class Unit:
-    def __init__(self, name, exponent):
+    def __init__(self, name: str, exponent: int):
         self.name = name
         self.exponent = exponent
 
@@ -28,10 +28,7 @@ class Quantity:
         self.units = [Unit(*u) for u in units]
 
     def to_dict(self):
-        return {
-            "magnitude": self.magnitude,
-            "units": [u.to_dict() for u in self.units],
-        }
+        return {"magnitude": self.magnitude, "units": [u.to_dict() for u in self.units]}
 
 
 class NameQuantityPair:
