@@ -142,6 +142,8 @@ class ApiTestCase(unittest.TestCase):
         )
 
         asDict = jobdata.to_dict()
+        self.assertEqual(asDict["section"], "section")
+        self.assertEqual(asDict["name"], "name")
 
     def test_tae_model_from_pint(self):
         q = pint.UnitRegistry()
@@ -152,6 +154,8 @@ class ApiTestCase(unittest.TestCase):
         )
 
         asDict = jobdata.to_dict()
+        self.assertEqual(asDict["section"], "section")
+        self.assertEqual(asDict["name"], "name")
 
 
 if __name__ == "__main__":
