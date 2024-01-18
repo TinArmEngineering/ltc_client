@@ -4,6 +4,20 @@ import requests
 
 LOGGING_LEVEL = logging.INFO
 
+JOB_STATUS = {
+    "New": 0,
+    "QueuedForMeshing": 10,
+    "Meshing": 20,
+    "QueuedForMeshConversion": 25,
+    "MeshConversion": 26,
+    "QueuedForSolving": 30,
+    "Solving": 40,
+    "QueuedForPostProcess": 50,
+    "PostProcess": 60,
+    "Complete": 70,
+    "Quarantined": 80,
+}
+
 
 ### Configure Logging
 logger = logging.getLogger()
@@ -25,6 +39,7 @@ class Unit:
 class Quantity:
     def __init__(self, magnitude, units: list[Unit]):
         self.magnitude = magnitude
+        # I'm very happy with this line of code
         self.units = [Unit(*u) if type(u) != Unit else u for u in units]
 
     def to_dict(self):
