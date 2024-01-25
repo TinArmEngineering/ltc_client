@@ -140,7 +140,6 @@ class StandardWorker:
             queue=queue,
             durable=True,
             exclusive=False,
-            auto_delete=True,
         )
         ch.queue_bind(exchange=self._exchange, queue=queue, routing_key=routing_key)
 
