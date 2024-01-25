@@ -95,6 +95,7 @@ class Api:
         logger.info(f"Updating job status: {url}")
 
         response = requests.put(url=url)
+        response.raise_for_status()
         return response.json()
 
     def get_job_artifact(self, job_id, artifact_id):
