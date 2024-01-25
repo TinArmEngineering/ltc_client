@@ -103,7 +103,7 @@ class StandardWorker:
         )
 
         self._channel = self._connection.channel()
-        self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=True)
+        self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=False)
         self._channel.exchange_declare(
             exchange=queue_exchange, exchange_type="topic", durable=True
         )
@@ -140,6 +140,7 @@ class StandardWorker:
             queue=queue,
             durable=True,
             exclusive=False,
+            auto_delete=True,
         )
         ch.queue_bind(exchange=self._exchange, queue=queue, routing_key=routing_key)
 
