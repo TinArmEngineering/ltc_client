@@ -1,4 +1,4 @@
-
+examples/M2/*/*.png
 #mac cruft
 *.DS_Store
 
