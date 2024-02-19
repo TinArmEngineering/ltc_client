@@ -207,7 +207,9 @@ class StandardWorker:
             conn.add_callback_threadsafe(cbq)
         elif next_routing_key is not None and file_content is not None:
             logger.info(f"next routing key: {next_routing_key}, with data")
+            body = json.loads(body.decode())  # Convert bytes to dictionary
             body["file_content"] = file_content
+            body = json.dumps(body)  # Convert dictionary to bytes
             cbq = functools.partial(self.queue_message, next_routing_key, body)
             conn.add_callback_threadsafe(cbq)
 
