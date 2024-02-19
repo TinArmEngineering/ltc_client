@@ -45,7 +45,7 @@ class DefaultIdLogFilter(logging.Filter):
         else:
             record.id = tld.job_id
         return True
-    
+
 
 stream_handler = logging.StreamHandler(stream=sys.stdout)
 stream_handler.addFilter(HostnameFilter())
@@ -184,16 +184,13 @@ class StandardWorker:
         t.start()
         thrds.append(t)
         logger.info(
-            "Thread count: %i of which %i active", len(thrds), threading.active_count()
+            f"Thread count: {len(thrds)} of which {threading.active_count()} active"
         )
 
     def _do_threaded_callback(self, conn, ch, delivery_tag, func, body):
         thread_id = threading.get_ident()
         logger.info(
-            "Thread id: %s Delivery tag: %s Message body: %s",
-            thread_id,
-            delivery_tag,
-            body,
+            f"Thread id: {thread_id}, Delivery tag:{delivery_tag} Message body: {body}"
         )
 
         logger.info(f"checking body for a job id")
@@ -202,10 +199,15 @@ class StandardWorker:
 
         logger.info(f"setting this thread: {thread_id} job id to: {tld.job_id}")
 
-        next_routing_key = func(body)
+        next_routing_key, file_content = func(body)
 
-        if next_routing_key is not None:
+        if next_routing_key is not None and file_content is None:
             logger.info(f"next routing key: {next_routing_key}")
+            cbq = functools.partial(self.queue_message, next_routing_key, body)
+            conn.add_callback_threadsafe(cbq)
+        elif next_routing_key is not None and file_content is not None:
+            logger.info(f"next routing key: {next_routing_key}, with data")
+            body["file_content"] = file_content
             cbq = functools.partial(self.queue_message, next_routing_key, body)
             conn.add_callback_threadsafe(cbq)
 
