@@ -137,7 +137,7 @@ class ApiTestCase(unittest.TestCase):
             "section",
             "name",
             tinarm.Quantity(
-                4242, [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
+                [4242], [1], [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
             ),
         )
 
@@ -146,11 +146,23 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(asDict["name"], "name")
 
     def test_tae_model_from_pint(self):
+        """
+        Test case for the `tae_model_from_pint` method.
+
+        This test case verifies the behavior of the `tae_model_from_pint` method by creating a random array of quantities
+        using the `pint` library and converting it to a `NameQuantityPair` object. It then checks if the converted object's
+        attributes match the expected values.
+
+        """
+        import numpy as np
+
         q = pint.UnitRegistry()
+        indat = np.random.rand(2, 5, 3) * q.meter
+        value, unit = indat.to_tuple()
         jobdata = tinarm.NameQuantityPair(
             "section",
             "name",
-            tinarm.Quantity(*(422 * q.m / q.s).to_tuple()),
+            tinarm.Quantity(tuple(value.flatten()), indat.shape, unit),
         )
 
         asDict = jobdata.to_dict()
