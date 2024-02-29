@@ -37,8 +37,10 @@ class Unit:
 
 
 class Quantity:
-    def __init__(self, magnitude, units: list[Unit]):
+    def __init__(self, magnitude, shape, units: list[Unit]):
         self.magnitude = magnitude
+        self.shape = shape
+
         # I'm very happy with this line of code
         self.units = [Unit(*u) if type(u) != Unit else u for u in units]
 
