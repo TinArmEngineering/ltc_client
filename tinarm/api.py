@@ -212,3 +212,48 @@ class Api:
             url=f"{self._root_url}/jobs/{job_id}/data/{data_name}?apikey={self._api_key}",
         )
         response.raise_for_status()
+
+    def get_reusable_artifact(self, hash):
+        """
+        Get a reusable artifact from the TAE API
+        """
+        response = requests.get(
+            url=f"{self._root_url}/reusable_artifacts/{hash}?apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def update_reusable_artifact(self, hash, reusable_artifact):
+        """
+        Update a reusable_artifact
+        """
+        response = requests.put(
+            url=f"{self._root_url}/reusable_artifacts/{hash}?apikey={self._api_key}",
+            json=reusable_artifact,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def update_reusable_artifact_url(self, hash, url):
+        """
+        Update an reusable_artifact's URL
+        """
+        response = requests.patch(
+            url=f"{self._root_url}/reusable_artifacts/{hash}/url?apikey={self._api_key}",
+            json={
+                "url": url,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def create_reusable_artifact_data(self, hash, data: NameQuantityPair):
+        """
+        Create reusable_artifact data
+        """
+        response = requests.post(
+            url=f"{self._root_url}/reusable_artifacts/{hash}/data?apikey={self._api_key}",
+            json=data.to_dict(),
+        )
+        response.raise_for_status()
+        return response.json()
