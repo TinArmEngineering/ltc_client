@@ -37,15 +37,52 @@ class Unit:
 
 
 class Quantity:
-    def __init__(self, magnitude, shape, units: list[Unit]):
-        self.magnitude = magnitude
-        self.shape = shape
+    """
+    Represents a quantity with magnitude, units, and shape.
 
-        # I'm very happy with this line of code
+    Args:
+        magnitude: The magnitude of the quantity. It can be a single value, a list-like object, or a numpy array.
+        units (list[Unit]): A list of Unit objects representing the units of the quantity.
+        shape (Optional): The shape of the quantity. If not provided, it will be inferred from the magnitude.
+
+    Attributes:
+        magnitude: The magnitude of the quantity.
+        shape: The shape of the quantity.
+        units (list[Unit]): A list of Unit objects representing the units of the quantity.
+    """
+
+    def __init__(self, magnitude, units: list[Unit], shape=None):
+        if hasattr(magnitude, "shape"):
+            if shape is None:
+                self.shape = magnitude.shape
+                self.magnitude = magnitude.flatten().tolist()
+            else:
+                self.magnitude = magnitude.tolist()
+                self.shape = shape
+        elif not hasattr(magnitude, "__len__"):
+            self.magnitude = [magnitude]
+            self.shape = [1]
+        elif shape is None:
+            self.shape = [len(magnitude)]
+            self.magnitude = magnitude
+        else:
+            self.magnitude = magnitude
+            self.shape = shape
+
         self.units = [Unit(*u) if type(u) != Unit else u for u in units]
 
     def to_dict(self):
-        return {"magnitude": self.magnitude, "units": [u.to_dict() for u in self.units]}
+        """
+        Converts the Quantity object to a dictionary.
+
+        Returns:
+            dict: A dictionary representation of the Quantity object.
+        """
+        return {
+            "magnitude": self.magnitude,
+            "shape": self.shape,
+            "units": [u.to_dict() for u in self.units],
+        }
 
 
 class NameQuantityPair:
