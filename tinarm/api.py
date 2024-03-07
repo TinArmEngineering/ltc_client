@@ -51,7 +51,7 @@ class Quantity:
         units (list[Unit]): A list of Unit objects representing the units of the quantity.
     """
 
-    def __init__(self, magnitude, units: list[Unit], shape=None):
+    def __init__(self, magnitude, shape, units: list[Unit]):
         if hasattr(magnitude, "shape"):
             if shape is None:
                 self.shape = magnitude.shape
