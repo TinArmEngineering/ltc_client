@@ -71,6 +71,10 @@ class Quantity:
         elif shape is None:
             self.shape = [len(magnitude)]
             self.magnitude = magnitude
+        elif prod(shape) != len(magnitude):
+            raise ValueError(
+                f"Shape {shape} does not match magnitude size {len(magnitude)}"
+            )
         else:
             self.magnitude = magnitude
             self.shape = shape

@@ -158,7 +158,7 @@ class ApiTestCase(unittest.TestCase):
         start = np.ones((2, 2, 3))
         q = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(q["magnitude"], start.flatten().tolist())
-        self.assertEqual(q["shape"], [2, 2, 3])
+        self.assertEqual(tuple(q["shape"]), tuple([2, 2, 3]))
 
     def test_tae_model_from_pint(self):
         """
