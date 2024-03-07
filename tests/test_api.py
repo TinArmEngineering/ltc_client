@@ -160,6 +160,15 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(q["magnitude"], start.flatten().tolist())
         self.assertEqual(tuple(q["shape"]), tuple([2, 2, 3]))
 
+    def test_Quantity_from_list(self):
+        q = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(q["magnitude"], [42, 43])
+        self.assertEqual(q["shape"], [2])
+
+    def test_Quantity_with_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)], [2, 2])
+
     def test_tae_model_from_pint(self):
         """
         Test case for the `tae_model_from_pint` method.
