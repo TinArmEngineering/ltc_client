@@ -147,12 +147,12 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(asDict["section"], "section")
         self.assertEqual(asDict["name"], "name")
 
-    def test_quantity_from_single_value(self):
+    def test_Quantity_from_single_value(self):
         q = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(q["magnitude"], [42])
         self.assertEqual(q["shape"], [1])
 
-    def test_quantity_from_numpy_array(self):
+    def test_Quantity_from_numpy_array(self):
         import numpy as np
 
         start = np.ones((2, 2, 3))
