@@ -1,6 +1,7 @@
 import logging
 import time
 import requests
+from math import prod
 
 LOGGING_LEVEL = logging.INFO
 
@@ -51,14 +52,19 @@ class Quantity:
         units (list[Unit]): A list of Unit objects representing the units of the quantity.
     """
 
-    def __init__(self, magnitude, units: list[Unit], shape=None):
+    def __init__(self, magnitude, units=None, shape=None):
         if hasattr(magnitude, "shape"):
             if shape is None:
                 self.shape = magnitude.shape
                 self.magnitude = magnitude.flatten().tolist()
-            else:
+            elif prod(shape) == magnitude.size:
                 self.magnitude = magnitude.tolist()
                 self.shape = shape
+            else:
+                raise ValueError(
+                    f"Shape {shape} does not match magnitude size {magnitude.size}"
+                )
+
         elif not hasattr(magnitude, "__len__"):
             self.magnitude = [magnitude]
             self.shape = [1]
