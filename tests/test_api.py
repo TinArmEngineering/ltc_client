@@ -137,7 +137,9 @@ class ApiTestCase(unittest.TestCase):
             "section",
             "name",
             tinarm.Quantity(
-                [4242], [1], [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
+                magnitude=[4242],
+                units=[tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)],
+                shape=[1],
             ),
         )
 
