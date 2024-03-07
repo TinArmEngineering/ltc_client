@@ -137,13 +137,37 @@ class ApiTestCase(unittest.TestCase):
             "section",
             "name",
             tinarm.Quantity(
-                [4242], [1], [tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)]
+                magnitude=[4242],
+                units=[tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)],
+                shape=[1],
             ),
         )
 
         asDict = jobdata.to_dict()
         self.assertEqual(asDict["section"], "section")
         self.assertEqual(asDict["name"], "name")
+
+    def test_Quantity_from_single_value(self):
+        q = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(q["magnitude"], [42])
+        self.assertEqual(q["shape"], [1])
+
+    def test_Quantity_from_numpy_array(self):
+        import numpy as np
+
+        start = np.ones((2, 2, 3))
+        q = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(q["magnitude"], start.flatten().tolist())
+        self.assertEqual(tuple(q["shape"]), tuple([2, 2, 3]))
+
+    def test_Quantity_from_list(self):
+        q = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(q["magnitude"], [42, 43])
+        self.assertEqual(q["shape"], [2])
+
+    def test_Quantity_with_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)], [2, 2])
 
     def test_tae_model_from_pint(self):
         """
@@ -158,11 +182,11 @@ class ApiTestCase(unittest.TestCase):
 
         q = pint.UnitRegistry()
         indat = np.random.rand(2, 5, 3) * q.meter
-        value, unit = indat.to_tuple()
+        value, units = indat.to_tuple()
         jobdata = tinarm.NameQuantityPair(
             "section",
             "name",
-            tinarm.Quantity(tuple(value.flatten()), indat.shape, unit),
+            tinarm.Quantity(tuple(value.flatten()), units, indat.shape),
         )
 
         asDict = jobdata.to_dict()
