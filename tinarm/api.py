@@ -114,16 +114,16 @@ class Api:
     The TAE API
     """
 
-    def __init__(self, node_id, root_url, api_key):
+    def __init__(self, root_url, api_key, org_id=None):
         """
         Initialize the API
         """
 
-        self._node_id = node_id
         self._root_url = root_url
         self._api_key = api_key
+        self._org_id = org_id
+        self._node_id = None
 
-        logger.info(f"node_id: {self._node_id}")
         logger.info(f"root_url: {self._root_url}")
 
     def get_job(self, job_id):
@@ -134,6 +134,19 @@ class Api:
             url=f"{self._root_url}/jobs/{job_id}?apikey={self._api_key}",
         )
         response.raise_for_status()
+        return response.json()
+
+    def create_job(self, job):
+        """
+        Create a job for the TAE API
+        """
+        response = requests.post(
+            url=f"{self._root_url}/jobs/?apikey={self._api_key}&org_id={self._org_id}",
+            json=job.to_api(),
+        )
+        response.raise_for_status()
+        if response.status_code == 200:
+            job.id = response.json()["id"]
         return response.json()
 
     def update_job_status(self, job_id, status):
