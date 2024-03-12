@@ -23,7 +23,7 @@ JOB_ARTIFACT_FILE_URL = "file://testnode/" + JOB_ARTIFACT_FILE_PATH
 JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 
 
-api = tinarm.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID)
+api = tinarm.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID)
 
 
 class ApiTestCase(unittest.TestCase):

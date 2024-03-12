@@ -114,7 +114,7 @@ class Api:
     The TAE API
     """
 
-    def __init__(self, root_url, api_key, org_id=None):
+    def __init__(self, root_url, api_key, org_id=None, node_id=None):
         """
         Initialize the API
         """
@@ -122,7 +122,7 @@ class Api:
         self._root_url = root_url
         self._api_key = api_key
         self._org_id = org_id
-        self._node_id = None
+        self._node_id = node_id
 
         logger.info(f"root_url: {self._root_url}")
 
