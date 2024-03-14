@@ -317,3 +317,13 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
+
+    def promote_reusable_artifact(self, hash):
+        """
+        Promote reusable artifact
+        """
+        response = requests.put(
+            url=f"{self._root_url}/reusable_artifact/{hash}/promote?apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return response.json()
