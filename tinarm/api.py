@@ -9,6 +9,8 @@ JOB_STATUS = {
     "New": 0,
     "QueuedForMeshing": 10,
     "Meshing": 20,
+    "QueuedForSimSetup": 21,
+    "SimSetup": 22,
     "QueuedForMeshConversion": 25,
     "MeshConversion": 26,
     "QueuedForSolving": 30,
