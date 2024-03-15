@@ -296,7 +296,7 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def update_reusable_artifact_url(self, hash, url, mimetype):
+    def update_reusable_artifact_url(self, hash, url, mimetype=None):
         """
         Update an reusable_artifact's URL
         """
