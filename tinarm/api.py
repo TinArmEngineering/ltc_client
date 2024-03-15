@@ -210,7 +210,7 @@ class Api:
         Post an artifact to a job
         """
         return self.create_job_artifact(
-            job_id, type, f"file://{self._node_id}/{filename}", promote
+            job_id, type, f"file://{self._node_id}{filename}", promote
         )
 
     def update_job_artifact(self, job_id, artifact_id, artifact):
