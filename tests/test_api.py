@@ -14,12 +14,12 @@ NODE_ID = "testnode"
 ROOT_URL = "http://example.com"
 API_KEY = "1234"
 JOB_ID = "4568"
-ORG_ID ="9ABC"
+ORG_ID = "9ABC"
 JOB_STATUS = 20
 JOB_ARTIFACT_ID = "6544"
 JOB_ARTIFACT_TYPE = "TEST_PLOT"
 JOB_ARTIFACT_FILE_PATH = "/lala/test_plot.png"
-JOB_ARTIFACT_FILE_URL = "file://testnode/" + JOB_ARTIFACT_FILE_PATH
+JOB_ARTIFACT_FILE_URL = "file://testnode" + JOB_ARTIFACT_FILE_PATH
 JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 
 
