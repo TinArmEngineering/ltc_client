@@ -294,15 +294,13 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def update_reusable_artifact_url(self, hash, url):
+    def update_reusable_artifact_url(self, hash, url, mimetype):
         """
         Update an reusable_artifact's URL
         """
         response = requests.patch(
             url=f"{self._root_url}/reusable_artifacts/{hash}/url?apikey={self._api_key}",
-            json={
-                "url": url,
-            },
+            json={"url": url, "mimetype": mimetype},
         )
         response.raise_for_status()
         return response.json()
