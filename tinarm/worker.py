@@ -45,7 +45,7 @@ class DefaultIdLogFilter(logging.Filter):
         else:
             record.id = tld.job_id
         return True
-    
+
 
 stream_handler = logging.StreamHandler(stream=sys.stdout)
 stream_handler.addFilter(HostnameFilter())
@@ -202,8 +202,9 @@ class StandardWorker:
 
         logger.info(f"setting this thread: {thread_id} job id to: {tld.job_id}")
 
-        next_routing_key = func(body)
-
+        next_routing_key, new_body = func(body)
+        if new_body is not None:
+            body = new_body
         if next_routing_key is not None:
             logger.info(f"next routing key: {next_routing_key}")
             cbq = functools.partial(self.queue_message, next_routing_key, body)
@@ -264,7 +265,7 @@ def _rabbitmq_ack_message(ch, delivery_tag):
 
 def _rabbitmq_queue_message(ch, exchange, routing_key, body):
     if ch.is_open:
-        logger.info(f"Sending to {body} to {routing_key}")
+        logger.info(f"Sending {body} to {routing_key}")
         ch.basic_publish(
             exchange=exchange,
             routing_key=routing_key,
