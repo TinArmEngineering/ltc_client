@@ -21,6 +21,7 @@ JOB_STATUS = {
     "Quarantined": 80,
 }
 
+STATUS_JOB = {value:key for key,value in JOB_STATUS.items()}
 
 ### Configure Logging
 logger = logging.getLogger()
