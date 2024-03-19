@@ -151,11 +151,11 @@ class Api:
             job.id = response.json()["id"]
         return response.json()
 
-    def update_job_status(self, job_id, status):
+    def update_job_status(self, job_id, status, percentage_complete=None):
         """
         Update a job status
         """
-        url = f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}"
+        url = f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}&percentage_complete={percentage_complete}"
         logger.info(f"Updating job status: {url}")
 
         response = requests.put(url=url)
@@ -198,6 +198,7 @@ class Api:
         response = requests.post(
             url=f"{self._root_url}/jobs/{job_id}/artifacts?promote={promote}&apikey={self._api_key}",
             json={
+                "created_on_node": self._node_id,
                 "type": type,
                 "url": url,
             },
@@ -234,12 +235,12 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def delete_job(self, job_id, hard=False):
+    def delete_job(self, job_id):
         """
         Delete a job
         """
         response = requests.delete(
-            url=f"{self._root_url}/jobs/{job_id}?hard={hard}&apikey={self._api_key}",
+            url=f"{self._root_url}/jobs/{job_id}?apikey={self._api_key}",
         )
         response.raise_for_status()
         return
