@@ -38,7 +38,7 @@ class ApiTestCase(unittest.TestCase):
     def test_update_job_status(self, mock_requests):
         api.update_job_status(JOB_ID, JOB_STATUS)
         mock_requests.put.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?node_id={NODE_ID}&apikey={API_KEY}"
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?node_id={NODE_ID}&apikey={API_KEY}&percentage_complete=None"
         )
 
     @mock.patch("tinarm.api.requests")
@@ -81,6 +81,7 @@ class ApiTestCase(unittest.TestCase):
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
             json={
+                "created_on_node": NODE_ID,
                 "type": JOB_ARTIFACT_TYPE,
                 "url": JOB_ARTIFACT_REMOTE_URL,
             },
@@ -94,6 +95,7 @@ class ApiTestCase(unittest.TestCase):
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
             json={
+                "created_on_node": NODE_ID,
                 "type": JOB_ARTIFACT_TYPE,
                 "url": JOB_ARTIFACT_FILE_URL,
             },
