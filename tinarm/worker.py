@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 
+from pathlib import Path
 from python_logging_rabbitmq import RabbitMQHandler
 
 from tinarm.api import Api
@@ -194,7 +195,12 @@ class StandardWorker:
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
 
-        job_log_filename = f"{self._projects_path}/jobs/{tld.job_id}/{self._worker_name}.log"
+        job_log_directory = f"{self._projects_path}/jobs/{tld.job_id}"
+
+        # Create the job directory if it doesn't exist
+        Path(job_log_directory).mkdir(parents=True, exist_ok=True)
+
+        job_log_filename = f"{job_log_directory}/{self._worker_name}.log"
 
         # Set up the log file handler for this job
         file_handler = logging.FileHandler(filename=job_log_filename, mode="a")
