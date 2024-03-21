@@ -1,6 +1,7 @@
 import functools
 import json
 import logging
+import os
 import pika
 import platform
 import ssl
@@ -56,17 +57,7 @@ stream_handler.setFormatter(
     )
 )
 
-# file_handler = logging.FileHandler(filename="mesher.log", mode="a")
-# file_handler.addFilter(HostnameFilter())
-# file_handler.addFilter(DefaultIdLogFilter())
-# file_handler.setFormatter(
-#     logging.Formatter(
-#         "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(funcName)s - %(message)s"
-#     )
-# )
-
 logger.addHandler(stream_handler)
-# logger.addHandler(file_handler)
 
 
 class StandardWorker:
@@ -86,9 +77,12 @@ class StandardWorker:
         queue_exchange,
         queue_prefetch_count=RABBIT_DEFAULT_PRE_FETCH_COUNT,
         x_priority=0,
+        projects_path=os.getenv("PROJECTS_PATH")
     ):
         self._threads = []
         self._exchange = queue_exchange
+        self._x_priority = x_priority
+        self._projects_path = projects_path
 
         if queue_use_ssl:
             ssl_options = pika.SSLOptions(context=ssl.create_default_context())
@@ -104,7 +98,7 @@ class StandardWorker:
             queue_password,
             ssl_options,
         )
-        self.x_priority = x_priority
+
         self._channel = self._connection.channel()
         self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=False)
         self._channel.exchange_declare(
@@ -120,7 +114,7 @@ class StandardWorker:
             exchange="amq.topic",
             declare_exchange=True,
             routing_key_formatter=lambda r: (
-                "{jobid}.mesher.{type}.{level}".format(
+                "{jobid}.{worker_name}.{type}.{level}".format(
                     jobid=r.id, type="python", level=r.levelname.lower()
                 )
             ),
@@ -134,7 +128,17 @@ class StandardWorker:
             )
         )
 
+        self.file_handler = logging.FileHandler(filename="log.log", mode="a")
+        self.file_handler.addFilter(HostnameFilter())
+        self.file_handler.addFilter(DefaultIdLogFilter())
+        self.file_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
+            )
+        )
+
         logger.addHandler(rabbit_handler)
+        logger.addHandler(self.file_handler)
 
     def bind(self, queue, routing_key, func):
         ch = self._channel
@@ -154,7 +158,7 @@ class StandardWorker:
                     self._threaded_callback,
                     args=(func, self._connection, ch, self._threads),
                 ),
-                arguments={"x-priority": self.x_priority},
+                arguments={"x-priority": self._x_priority},
             )
 
         logger.info(f"Declare::Bind, Q::RK, {queue}::{routing_key}")
@@ -192,19 +196,24 @@ class StandardWorker:
         )
 
     def _do_threaded_callback(self, conn, ch, delivery_tag, func, body):
-        thread_id = threading.get_ident()
-        logger.info(
-            "Thread id: %s Delivery tag: %s Message body: %s",
-            thread_id,
-            delivery_tag,
-            body,
-        )
 
-        logger.info(f"checking body for a job id")
+        logger.removeHandler(self.file_handler)
+
+        thread_id = threading.get_ident()
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
 
-        logger.info(f"setting this thread: {thread_id} job id to: {tld.job_id}")
+        logger.removeHandler(self.file_handler)
+        self.file_handler = logging.FileHandler(filename=f"{self._projects_path}/jobs/{tld.job_id}/log.log", mode="a")
+        logger.addHandler(self.file_handler)
+
+        logger.info(
+            "Thread id: %s Delivery tag: %s Message body: %s Job id: %s",
+            thread_id,
+            delivery_tag,
+            body,
+            tld.job_id,
+        )
 
         next_routing_key, new_body = func(body)
         if new_body is not None:
