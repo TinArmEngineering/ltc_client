@@ -85,6 +85,7 @@ class StandardWorker:
         queue_use_ssl,
         queue_exchange,
         queue_prefetch_count=RABBIT_DEFAULT_PRE_FETCH_COUNT,
+        x_priority=0,
     ):
         self._threads = []
         self._exchange = queue_exchange
@@ -103,7 +104,7 @@ class StandardWorker:
             queue_password,
             ssl_options,
         )
-
+        self.x_priority = x_priority
         self._channel = self._connection.channel()
         self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=False)
         self._channel.exchange_declare(
@@ -153,6 +154,7 @@ class StandardWorker:
                     self._threaded_callback,
                     args=(func, self._connection, ch, self._threads),
                 ),
+                arguments={"x-priority": self.x_priority},
             )
 
         logger.info(f"Declare::Bind, Q::RK, {queue}::{routing_key}")
