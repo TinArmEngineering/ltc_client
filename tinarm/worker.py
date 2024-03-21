@@ -11,6 +11,7 @@ import time
 
 from python_logging_rabbitmq import RabbitMQHandler
 
+from tinarm.api import Api
 
 RABBIT_DEFAULT_PRE_FETCH_COUNT = 1
 RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS = 0.5
@@ -77,9 +78,11 @@ class StandardWorker:
         queue_exchange,
         queue_prefetch_count=RABBIT_DEFAULT_PRE_FETCH_COUNT,
         x_priority=0,
-        projects_path=os.getenv("PROJECTS_PATH")
+        projects_path=os.getenv("PROJECTS_PATH"),
     ):
         self._threads = []
+        self._node_id = node_id
+        self._worker_name = worker_name
         self._exchange = queue_exchange
         self._x_priority = x_priority
         self._projects_path = projects_path
@@ -191,8 +194,10 @@ class StandardWorker:
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
 
+        job_log_filename = f"{self._projects_path}/jobs/{tld.job_id}/{self._worker_name}.log"
+
         # Set up the log file handler for this job
-        file_handler = logging.FileHandler(filename=f"{self._projects_path}/jobs/{tld.job_id}/log.log", mode="a")
+        file_handler = logging.FileHandler(filename=job_log_filename, mode="a")
         file_handler.addFilter(HostnameFilter())
         file_handler.addFilter(DefaultIdLogFilter())
         file_handler.setFormatter(
@@ -223,6 +228,20 @@ class StandardWorker:
 
         # Remove the job log file handler
         logger.removeHandler(file_handler)
+
+        # Attempt to create a job artifact from the log
+        api_root = os.getenv("API_URL")
+        api_key = self.payload.get("apikey", None)
+
+        try:
+            # if we have an api root and key
+            if api_root and api_key:
+                logger.info("Creating artifact from job log")
+                api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
+                api.create_job_artifact_from_file(tld.job_id, f"{self._worker_name}_log", job_log_filename)
+        except Exception as e:
+            logger.error(f"Failed to create artifact from job log: {e}")
+
 
 
 def _rabbitmq_connect(node_id, worker_name, host, port, user, password, ssl_options):
