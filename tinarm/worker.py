@@ -231,7 +231,7 @@ class StandardWorker:
 
         # Attempt to create a job artifact from the log
         api_root = os.getenv("API_URL")
-        api_key = self.payload.get("apikey", None)
+        api_key = payload.get("apikey", None)
 
         try:
             # if we have an api root and key
