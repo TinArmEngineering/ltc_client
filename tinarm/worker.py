@@ -115,7 +115,7 @@ class StandardWorker:
             declare_exchange=True,
             routing_key_formatter=lambda r: (
                 "{jobid}.{worker_name}.{type}.{level}".format(
-                    jobid=r.id, type="python", level=r.levelname.lower()
+                    jobid=r.id, worker_name=worker_name, type="python", level=r.levelname.lower()
                 )
             ),
         )
