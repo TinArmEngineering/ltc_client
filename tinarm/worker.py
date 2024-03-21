@@ -231,11 +231,9 @@ class StandardWorker:
 
         # Attempt to create a job artifact from the log
         logger.info("***** Looking for API URL *****")
-        api_root = os.getenv("API_URL")
+        api_root = os.getenv("API_ROOT_URL")
         logger.info(f"API URL: {api_root}")
-        logger.info("***** Looking for API Key *****")
         api_key = payload.get("apikey", None)
-        logger.info(f"API Key: {api_key}")
 
         try:
             # if we have an api root and key
