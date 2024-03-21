@@ -76,6 +76,7 @@ class StandardWorker:
 
     def __init__(
         self,
+        node_id,
         worker_name,
         queue_host,
         queue_port,
@@ -94,6 +95,7 @@ class StandardWorker:
             ssl_options = None
 
         self._connection = _rabbitmq_connect(
+            node_id,
             worker_name,
             queue_host,
             queue_port,
@@ -214,8 +216,10 @@ class StandardWorker:
         conn.add_callback_threadsafe(cb)
 
 
-def _rabbitmq_connect(worker_name, host, port, user, password, ssl_options):
-    client_properties = {"connection_name": f"{worker_name}-{platform.node()}"}
+def _rabbitmq_connect(node_id, worker_name, host, port, user, password, ssl_options):
+    client_properties = {
+        "connection_name": f"{node_id}-{worker_name}-{platform.node()}"
+    }
 
     connection_params = pika.ConnectionParameters(
         host=host,
