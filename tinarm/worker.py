@@ -128,17 +128,7 @@ class StandardWorker:
             )
         )
 
-        self.file_handler = logging.FileHandler(filename="log.log", mode="a")
-        self.file_handler.addFilter(HostnameFilter())
-        self.file_handler.addFilter(DefaultIdLogFilter())
-        self.file_handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
-            )
-        )
-
         logger.addHandler(rabbit_handler)
-        logger.addHandler(self.file_handler)
 
     def bind(self, queue, routing_key, func):
         ch = self._channel
@@ -197,16 +187,21 @@ class StandardWorker:
 
     def _do_threaded_callback(self, conn, ch, delivery_tag, func, body):
 
-        logger.removeHandler(self.file_handler)
-
         thread_id = threading.get_ident()
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
 
-        logger.removeHandler(self.file_handler)
-        self.file_handler = logging.FileHandler(filename=f"{self._projects_path}/jobs/{tld.job_id}/log.log", mode="a")
-        logger.addHandler(self.file_handler)
+        # Set up the log file handler for this job
+        file_handler = logging.FileHandler(filename=f"{self._projects_path}/jobs/{tld.job_id}/log.log", mode="a")
+        file_handler.addFilter(HostnameFilter())
+        file_handler.addFilter(DefaultIdLogFilter())
+        file_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
+            )
+        )
 
+        logger.addHandler(file_handler)
         logger.info(
             "Thread id: %s Delivery tag: %s Message body: %s Job id: %s",
             thread_id,
@@ -225,6 +220,9 @@ class StandardWorker:
 
         cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
         conn.add_callback_threadsafe(cb)
+
+        # Remove the job log file handler
+        logger.removeHandler(file_handler)
 
 
 def _rabbitmq_connect(node_id, worker_name, host, port, user, password, ssl_options):
