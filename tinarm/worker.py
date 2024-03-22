@@ -87,6 +87,7 @@ class StandardWorker:
         self._exchange = queue_exchange
         self._x_priority = x_priority
         self._projects_path = projects_path
+        self._send_log_as_artifact = True
 
         if queue_use_ssl:
             ssl_options = pika.SSLOptions(context=ssl.create_default_context())
@@ -119,7 +120,10 @@ class StandardWorker:
             declare_exchange=True,
             routing_key_formatter=lambda r: (
                 "{jobid}.{worker_name}.{type}.{level}".format(
-                    jobid=r.id, worker_name=worker_name, type="python", level=r.levelname.lower()
+                    jobid=r.id,
+                    worker_name=worker_name,
+                    type="python",
+                    level=r.levelname.lower(),
                 )
             ),
         )
@@ -241,15 +245,17 @@ class StandardWorker:
         logger.info(f"API URL: {api_root}")
         api_key = payload.get("apikey", None)
 
-        try:
-            # if we have an api root and key
-            if api_root and api_key:
-                logger.info("Creating artifact from job log")
-                api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
-                api.create_job_artifact_from_file(tld.job_id, f"{self._worker_name}_log", job_log_filename)
-        except Exception as e:
-            logger.error(f"Failed to create artifact from job log: {e}")
-
+        if self._send_log_as_artifact:
+            try:
+                # if we have an api root and key
+                if api_root and api_key:
+                    logger.info("Creating artifact from job log")
+                    api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
+                    api.create_job_artifact_from_file(
+                        tld.job_id, f"{self._worker_name}_log", job_log_filename
+                    )
+            except Exception as e:
+                logger.error(f"Failed to create artifact from job log: {e}")
 
 
 def _rabbitmq_connect(node_id, worker_name, host, port, user, password, ssl_options):
