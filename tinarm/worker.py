@@ -205,13 +205,13 @@ class StandardWorker:
         can_send_log_as_artifact = self._send_log_as_artifact and api_root and api_key
 
         job_log_directory = f"{self._projects_path}/jobs/{tld.job_id}"
-
-        # Create the job directory if it doesn't exist
-        Path(job_log_directory).mkdir(parents=True, exist_ok=True)
-
         job_log_filename = f"{job_log_directory}/{self._worker_name}.log"
 
         if can_send_log_as_artifact:
+
+            # Emsure the job directory exists
+            Path(job_log_directory).mkdir(parents=True, exist_ok=True)
+
             # Set up the log file handler for this job
             file_handler = logging.FileHandler(filename=job_log_filename, mode="a")
             file_handler.addFilter(HostnameFilter())
