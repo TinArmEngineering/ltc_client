@@ -199,6 +199,11 @@ class StandardWorker:
         payload = json.loads(body.decode())
         tld.job_id = payload["id"]
 
+        api_root = os.getenv("API_ROOT_URL")
+        api_key = payload.get("apikey", None)
+
+        can_send_log_as_artifact = self._send_log_as_artifact and api_root and api_key
+
         job_log_directory = f"{self._projects_path}/jobs/{tld.job_id}"
 
         # Create the job directory if it doesn't exist
@@ -206,17 +211,19 @@ class StandardWorker:
 
         job_log_filename = f"{job_log_directory}/{self._worker_name}.log"
 
-        # Set up the log file handler for this job
-        file_handler = logging.FileHandler(filename=job_log_filename, mode="a")
-        file_handler.addFilter(HostnameFilter())
-        file_handler.addFilter(DefaultIdLogFilter())
-        file_handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
+        if can_send_log_as_artifact:
+            # Set up the log file handler for this job
+            file_handler = logging.FileHandler(filename=job_log_filename, mode="a")
+            file_handler.addFilter(HostnameFilter())
+            file_handler.addFilter(DefaultIdLogFilter())
+            file_handler.setFormatter(
+                logging.Formatter(
+                    "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
+                )
             )
-        )
+        
+            logger.addHandler(file_handler)
 
-        logger.addHandler(file_handler)
         logger.info(
             "Thread id: %s Delivery tag: %s Message body: %s Job id: %s",
             thread_id,
@@ -236,24 +243,14 @@ class StandardWorker:
         cb = functools.partial(_rabbitmq_ack_message, ch, delivery_tag)
         conn.add_callback_threadsafe(cb)
 
-        # Remove the job log file handler
-        logger.removeHandler(file_handler)
-
-        # Attempt to create a job artifact from the log
-        logger.info("***** Looking for API URL *****")
-        api_root = os.getenv("API_ROOT_URL")
-        logger.info(f"API URL: {api_root}")
-        api_key = payload.get("apikey", None)
-
-        if self._send_log_as_artifact:
+        if can_send_log_as_artifact:
+            logger.removeHandler(file_handler)
             try:
-                # if we have an api root and key
-                if api_root and api_key:
-                    logger.info("Creating artifact from job log")
-                    api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
-                    api.create_job_artifact_from_file(
-                        tld.job_id, f"{self._worker_name}_log", job_log_filename
-                    )
+                logger.info("Creating artifact from job log")
+                api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
+                api.create_job_artifact_from_file(
+                    tld.job_id, f"{self._worker_name}_log", job_log_filename
+                )
             except Exception as e:
                 logger.error(f"Failed to create artifact from job log: {e}")
 
