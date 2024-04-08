@@ -21,7 +21,7 @@ JOB_STATUS = {
     "Quarantined": 80,
 }
 
-STATUS_JOB = {value:key for key,value in JOB_STATUS.items()}
+STATUS_JOB = {value: key for key, value in JOB_STATUS.items()}
 
 ### Configure Logging
 logger = logging.getLogger()
@@ -326,6 +326,16 @@ class Api:
         """
         response = requests.put(
             url=f"{self._root_url}/reusable_artifacts/{hash}/promote?apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_material(self, material_id):
+        """
+        Get a material from the TAE API
+        """
+        response = requests.get(
+            url=f"{self._root_url}/materials/{material_id}?apikey={self._api_key}",
         )
         response.raise_for_status()
         return response.json()
