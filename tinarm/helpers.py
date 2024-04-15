@@ -1,6 +1,46 @@
 from . import Quantity, NameQuantityPair
 import random
 import requests
+import pint
+
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+q = pint.UnitRegistry()
+
+
+def decode(enc):
+    """Decode a quantity encoded object"""
+    if len(enc["magnitude"]) != 1:
+        enc_tuple = tuple(
+            (
+                np.array(enc["magnitude"], dtype=np.float64).reshape(enc["shape"]),
+                tuple((e["name"], e["exponent"]) for e in enc.get("units", ())),
+            )
+        )
+    else:
+        enc_tuple = (
+            enc["magnitude"][0],
+            tuple((e["name"], e["exponent"]) for e in enc.get("units", ())),
+        )
+    try:
+        quant = q.Quantity.from_tuple(enc_tuple)
+        quant.ito_base_units()
+    except:
+        logger.error(
+            "Error decoding {0}".format(
+                (
+                    enc["magnitude"],
+                    ((e["name"], e["exponent"]) for e in enc.get("units", ())),
+                )
+            )
+        )
+        raise
+
+    logger.debug("convert {i} -> {o:~P}".format(o=quant, i=enc))
+    return quant
 
 
 class Machine(object):

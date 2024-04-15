@@ -2,7 +2,7 @@ import os
 import sys
 import mock
 import unittest
-import pint
+
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
@@ -151,6 +151,25 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(asDict["section"], "section")
         self.assertEqual(asDict["name"], "name")
 
+    def test_Quantity_from_pint_value(self):
+        import pint
+
+        inval = pint.Quantity(42, "millimeter")
+        q = tinarm.Quantity.from_pint_value(inval)
+        self.assertEqual(q.magnitude, [42])
+        self.assertEqual(q.units, [tinarm.Unit("millimeter", 2)])
+
+    def test_Qauntity_from_mulitdim_pint_value(self):
+        import numpy as np
+
+        inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
+        outval = tinarm.Quantity.from_pint_value(inval)
+        self.assertAlmostEqual(
+            outval["magnitude"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        )
+        self.assertEqual(outval["shape"], [2, 2, 2])
+        self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
+
     def test_Quantity_from_single_value(self):
         q = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(q["magnitude"], [42])
@@ -183,6 +202,7 @@ class ApiTestCase(unittest.TestCase):
 
         """
         import numpy as np
+        import pint
 
         q = pint.UnitRegistry()
         indat = np.random.rand(2, 5, 3) * q.meter
@@ -196,6 +216,21 @@ class ApiTestCase(unittest.TestCase):
         asDict = jobdata.to_dict()
         self.assertEqual(asDict["section"], "section")
         self.assertEqual(asDict["name"], "name")
+
+    def test_decode(self):
+        import pint
+
+        q = pint.UnitRegistry()
+
+        in_quant = {
+            "magnitude": [42, 43],
+            "shape": [2],
+            "units": [{"name": "millimeter", "exponent": 2}],
+        }
+        out_quant = tinarm.decode(in_quant)
+        self.assertAlmostEqual(out_quant.to(q.mm**2).magnitude, [42, 43])
+        self.assertEqual(out_quant.shape, [2])
+        self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
 
 if __name__ == "__main__":

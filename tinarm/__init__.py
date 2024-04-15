@@ -2,7 +2,7 @@
 
 from tinarm.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
 from tinarm.api import Api, NameQuantityPair, Quantity, Unit
-from tinarm.helpers import Machine, Job
+from tinarm.helpers import Machine, Job, decode
 
 __title__ = "TINARM - Node creation tool for TAE workers"
 __version__ = "0.1"

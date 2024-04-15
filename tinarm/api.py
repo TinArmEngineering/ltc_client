@@ -2,6 +2,7 @@ import logging
 import time
 import requests
 from math import prod
+import pint
 
 LOGGING_LEVEL = logging.INFO
 
@@ -46,6 +47,7 @@ class Quantity:
 
     Args:
         magnitude: The magnitude of the quantity. It can be a single value, a list-like object, or a numpy array.
+        or even a pint.Quantity
         units (list[Unit]): A list of Unit objects representing the units of the quantity.
         shape (Optional): The shape of the quantity. If not provided, it will be inferred from the magnitude.
 
@@ -56,6 +58,8 @@ class Quantity:
     """
 
     def __init__(self, magnitude, units=None, shape=None):
+        if isinstance(magnitude, pint.Quantity):
+            magnitude, units = magnitude.to_tuple()
         if hasattr(magnitude, "shape"):
             if shape is None:
                 self.shape = magnitude.shape
