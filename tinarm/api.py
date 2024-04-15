@@ -62,7 +62,7 @@ class Quantity:
             magnitude, units = magnitude.to_tuple()
         if hasattr(magnitude, "shape"):
             if shape is None:
-                self.shape = magnitude.shape
+                self.shape = list(magnitude.shape)
                 self.magnitude = magnitude.flatten().tolist()
             elif prod(shape) == magnitude.size:
                 self.magnitude = magnitude.tolist()

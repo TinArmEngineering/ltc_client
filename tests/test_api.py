@@ -182,7 +182,7 @@ class ApiTestCase(unittest.TestCase):
         start = np.ones((2, 2, 3))
         outval = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], start.flatten().tolist())
-        self.assertEqual(tuple(outval["shape"]), tuple([2, 2, 3]))
+        self.assertEqual(tuple(outval["shape"]), [2, 2, 3])
 
     def test_Quantity_from_list(self):
         outval = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
