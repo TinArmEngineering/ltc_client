@@ -229,7 +229,7 @@ class ApiTestCase(unittest.TestCase):
             "units": [{"name": "millimeter", "exponent": 2}],
         }
         out_quant = tinarm.decode(in_quant)
-        self.assertAlmostEqual(out_quant.to(q.mm**2).magnitude, [42, 43])
+        self.assertTrue((out_quant.to(q.mm**2).magnitude == [42, 43]).all())
         self.assertEqual(out_quant.shape, [2])
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
