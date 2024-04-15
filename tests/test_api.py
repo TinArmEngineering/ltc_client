@@ -155,15 +155,16 @@ class ApiTestCase(unittest.TestCase):
         import pint
 
         inval = pint.Quantity(42, "millimeter")
-        q = tinarm.Quantity.from_pint_value(inval)
-        self.assertEqual(q.magnitude, [42])
-        self.assertEqual(q.units, [tinarm.Unit("millimeter", 2)])
+        outval = tinarm.Quantity(inval).to_dict()
+        self.assertEqual(outval["magnitude"], [42])
+        self.assertEqual(outval.units, [tinarm.Unit("millimeter", 2)])
 
     def test_Qauntity_from_mulitdim_pint_value(self):
         import numpy as np
+        import pint
 
         inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
-        outval = tinarm.Quantity.from_pint_value(inval)
+        outval = tinarm.Quantity(inval).to_dict()
         self.assertAlmostEqual(
             outval["magnitude"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         )
