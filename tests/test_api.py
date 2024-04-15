@@ -157,7 +157,7 @@ class ApiTestCase(unittest.TestCase):
         inval = pint.Quantity(42, "millimeter")
         outval = tinarm.Quantity(inval).to_dict()
         self.assertEqual(outval["magnitude"], [42])
-        self.assertEqual(outval.units, [tinarm.Unit("millimeter", 2)])
+        self.assertEqual(outval["units"], [tinarm.Unit("millimeter", 2)])
 
     def test_Qauntity_from_mulitdim_pint_value(self):
         import numpy as np
@@ -172,22 +172,22 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
 
     def test_Quantity_from_single_value(self):
-        q = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
-        self.assertEqual(q["magnitude"], [42])
-        self.assertEqual(q["shape"], [1])
+        outval = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(outval["magnitude"], [42])
+        self.assertEqual(outval["shape"], [1])
 
     def test_Quantity_from_numpy_array(self):
         import numpy as np
 
         start = np.ones((2, 2, 3))
-        q = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
-        self.assertEqual(q["magnitude"], start.flatten().tolist())
-        self.assertEqual(tuple(q["shape"]), tuple([2, 2, 3]))
+        outval = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(outval["magnitude"], start.flatten().tolist())
+        self.assertEqual(tuple(outval["shape"]), tuple([2, 2, 3]))
 
     def test_Quantity_from_list(self):
-        q = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
-        self.assertEqual(q["magnitude"], [42, 43])
-        self.assertEqual(q["shape"], [2])
+        outval = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
+        self.assertEqual(outval["magnitude"], [42, 43])
+        self.assertEqual(outval["shape"], [2])
 
     def test_Quantity_with_invalid_shape(self):
         with self.assertRaises(ValueError):
