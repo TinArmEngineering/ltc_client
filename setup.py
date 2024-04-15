@@ -9,7 +9,7 @@ setuptools.setup(
     author_email="chris@tinarmengineering.com",
     license="MIT",
     packages=["tinarm"],
-    install_requires=["pika", "python_logging_rabbitmq", "requests", "pint"],
+    install_requires=["pika", "python_logging_rabbitmq", "requests", "pint", "numpy"],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Science/Research",
