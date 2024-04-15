@@ -231,7 +231,14 @@ class ApiTestCase(unittest.TestCase):
         }
         out_quant = tinarm.decode(in_quant)
         self.assertTrue(np.isclose(out_quant.to(q.mm**2).magnitude, [42.0, 43.0]).all())
-        self.assertEqual(out_quant.shape, [2])
+        self.assertEqual(
+            out_quant.shape,
+            tuple(
+                [
+                    2,
+                ]
+            ),
+        )
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
 
