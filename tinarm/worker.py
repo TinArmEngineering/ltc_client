@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import pika
+from socket import gaierror
 import platform
 import ssl
 import sys
@@ -221,7 +222,7 @@ class StandardWorker:
                     "%(asctime)s - %(id)s - %(levelname)s - %(hostname)s - %(filename)s->%(funcName)s() - %(message)s"
                 )
             )
-        
+
             logger.addHandler(file_handler)
 
         logger.info(
@@ -287,6 +288,20 @@ def _rabbitmq_connect(node_id, worker_name, host, port, user, password, ssl_opti
                     f"Failed to connect to the rabbitmq, retry in {sleepTime} s"
                 )
                 time.sleep(sleepTime)
+        except gaierror as err:
+            sleepTime *= 2
+            if sleepTime >= RABBIT_MAX_WAIT_BEFORE_RERTY_SECS:
+                logger.error(f"Failed to connect to the rabbitmq after {sleepTime} s")
+                raise err
+            else:
+                logger.warning(
+                    f"Failed to connect to the rabbitmq, [{err}] retry in {sleepTime} s"
+                )
+                time.sleep(sleepTime)
+        except Exception as err:
+            logger.error(f"Failed to connect to the rabbitmq: {err}")
+            raise err
+
         else:
             connected = True
 
