@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-q = pint.UnitRegistry()
+q = pint.get_application_registry()
 
 
 def decode(enc):
