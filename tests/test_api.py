@@ -157,7 +157,7 @@ class ApiTestCase(unittest.TestCase):
         inval = pint.Quantity(42, "millimeter")
         outval = tinarm.Quantity(inval).to_dict()
         self.assertEqual(outval["magnitude"], [42])
-        self.assertEqual(outval["units"], [tinarm.Unit("millimeter", 2)])
+        self.assertEqual(outval["units"], [{"exponent": 1, "name": "millimeter"}])
 
     def test_Qauntity_from_mulitdim_pint_value(self):
         import numpy as np
@@ -230,9 +230,7 @@ class ApiTestCase(unittest.TestCase):
             "units": [{"name": "millimeter", "exponent": 2}],
         }
         out_quant = tinarm.decode(in_quant)
-        self.assertTrue(
-            np.isclose(out_quant.to(q.mm**2).magnitude == [42.0, 43.0]).all()
-        )
+        self.assertTrue(np.isclose(out_quant.to(q.mm**2).magnitude, [42.0, 43.0]).all())
         self.assertEqual(out_quant.shape, [2])
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
