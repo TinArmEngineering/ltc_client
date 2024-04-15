@@ -182,7 +182,7 @@ class ApiTestCase(unittest.TestCase):
         start = np.ones((2, 2, 3))
         outval = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], start.flatten().tolist())
-        self.assertEqual(tuple(outval["shape"]), [2, 2, 3])
+        self.assertEqual(outval["shape"], [2, 2, 3])
 
     def test_Quantity_from_list(self):
         outval = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
@@ -220,6 +220,7 @@ class ApiTestCase(unittest.TestCase):
 
     def test_decode(self):
         import pint
+        import numpy as np
 
         q = pint.UnitRegistry()
 
@@ -229,7 +230,9 @@ class ApiTestCase(unittest.TestCase):
             "units": [{"name": "millimeter", "exponent": 2}],
         }
         out_quant = tinarm.decode(in_quant)
-        self.assertTrue((out_quant.to(q.mm**2).magnitude == [42, 43]).all())
+        self.assertTrue(
+            np.isclose(out_quant.to(q.mm**2).magnitude == [42.0, 43.0]).all()
+        )
         self.assertEqual(out_quant.shape, [2])
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
