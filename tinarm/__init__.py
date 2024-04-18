@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from tinarm.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
+# from tinarm.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
 from tinarm.api import Api, NameQuantityPair, Quantity, Unit
 from tinarm.helpers import Machine, Job, decode
 
