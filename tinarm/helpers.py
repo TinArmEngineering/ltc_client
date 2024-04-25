@@ -1,10 +1,14 @@
 from . import Quantity, NameQuantityPair
+from .api import JOB_STATUS, STATUS_JOB
 import random
 import requests
 import pint
-
+from webstompy import StompListener
+from tqdm.auto import tqdm
 import numpy as np
 import logging
+import uuid
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -159,3 +163,77 @@ class Job(object):
 
     def run(self):
         pass
+
+
+class TqdmUpTo(tqdm):
+    """Provides `update_to(n)` which uses `tqdm.update(delta_n)`."""
+
+    def update_to(self, b=1, bsize=1, tsize=None):
+        """
+        b  : int, optional
+            Number of blocks transferred so far [default: 1].
+        bsize  : int, optional
+            Size of each block (in tqdm units) [default: 1].
+        tsize  : int, optional
+            Total size (in tqdm units). If [default: None] remains unchanged.
+        """
+        if tsize is not None:
+            self.total = tsize
+        return self.update(b * bsize - self.n)  # also sets self.n = b * bsize
+
+
+class MyListener(StompListener):
+    def __init__(self, job, uid):
+        self.job_id = job.id
+        self.uid = uid
+        self.done = False
+        self._callback_fn = None  # Initialize the callback function
+
+    @property
+    def callback_fn(self):
+        return self._callback_fn
+
+    @callback_fn.setter
+    def callback_fn(self, fn):
+        self._callback_fn = fn
+
+        # Rest of the code...
+
+    def on_message(self, frame):
+        headers = {key.decode(): value.decode() for key, value in frame.header}
+        if headers["subscription"] == self.uid:
+            try:
+                time_str, level_str, mesg_str = frame.message.decode().split(" - ")
+            except ValueError:
+                logger.warning(frame)
+
+            else:
+                line = [part.strip() for part in mesg_str.strip().split(":")]
+                if line[1] == "Time":
+                    done, total = (int(part) for part in line[2].split("/"))
+                    self.callback_fn(done, tsize=total)
+                    if done == total:
+                        self.done = True
+                        return self.done
+        else:
+            return
+
+
+async def async_job_monitor(api, my_job, connection, position):
+    uid = str(uuid.uuid4())
+    listener = MyListener(my_job, uid)
+    connection.add_listener(listener)
+    connection.subscribe(destination=f"/topic/{my_job.id}.solver.*.progress", id=uid)
+    with TqdmUpTo(
+        total=my_job.simulation["timestep_intervals"],
+        desc=f"Job {my_job.title}",
+        position=position,
+        leave=False,
+    ) as pbar:
+        listener.callback_fn = pbar.update_to
+
+        j1_result = api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
+
+        while not listener.done:
+            await asyncio.sleep(1)  # sleep for a second
+        return STATUS_JOB[api.get_job(my_job.id)["status"]]
