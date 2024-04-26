@@ -57,7 +57,7 @@ class Quantity:
         units (list[Unit]): A list of Unit objects representing the units of the quantity.
     """
 
-    def __init__(self, magnitude, units=None, shape=None):
+    def __init__(self, magnitude, units=[None], shape=None):
         if isinstance(magnitude, pint.Quantity):
             magnitude, units = magnitude.to_tuple()
         if hasattr(magnitude, "shape"):
