@@ -343,3 +343,13 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
+
+    def get_jobs(self):
+        """
+        Get all jobs
+        """
+        response = requests.get(
+            url=f"{self._root_url}/jobs?apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return response.json()
