@@ -1,11 +1,11 @@
 import setuptools
 
 setuptools.setup(
-    name="tinarm",
+    name="ltc_client",
     version="0.1",
     author="Martin West, Chris Wallis",
     description="TINARM - Node creation tool for TAE workers",
-    url="https://github.com/TinArmEngineering/tinarm",
+    url="https://github.com/TinArmEngineering/ltc_client",
     author_email="chris@tinarmengineering.com",
     license="MIT",
     packages=["tinarm"],
