@@ -7,7 +7,7 @@ from teamcity.unittestpy import TeamcityTestRunner
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from tinarm.worker import addLoggingLevel
+from ltc_client.worker import addLoggingLevel
 
 
 class TestAddLoggingLevel(unittest.TestCase):

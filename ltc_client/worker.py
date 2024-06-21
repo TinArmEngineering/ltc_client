@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from python_logging_rabbitmq import RabbitMQHandler
 
-from tinarm.api import Api
+from ltc_client.api import Api
 
 RABBIT_DEFAULT_PRE_FETCH_COUNT = 1
 RABBIT_FIRST_WAIT_BEFORE_RERTY_SECS = 0.5

@@ -8,7 +8,7 @@ from teamcity.unittestpy import TeamcityTestRunner
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import tinarm
+import ltc_client
 
 NODE_ID = "testnode"
 ROOT_URL = "http://example.com"
@@ -23,25 +23,25 @@ JOB_ARTIFACT_FILE_URL = "file://testnode" + JOB_ARTIFACT_FILE_PATH
 JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 
 
-api = tinarm.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID)
+api = ltc_client.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID)
 
 
 class ApiTestCase(unittest.TestCase):
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_get_job(self, mock_requests):
         api.get_job(JOB_ID)
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_update_job_status(self, mock_requests):
         api.update_job_status(JOB_ID, JOB_STATUS)
         mock_requests.put.assert_called_with(
             url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?node_id={NODE_ID}&apikey={API_KEY}&percentage_complete=None"
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_get_job_artifact_not_found(self, mock_requests):
         with self.assertRaises(Exception):
             api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
@@ -49,7 +49,7 @@ class ApiTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_get_promoted_job_artifact_raise(self, mock_requests):
         with self.assertRaises(Exception):
             api.get_promoted_job_artifact("12", "34")
@@ -57,7 +57,7 @@ class ApiTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/jobs/12?apikey={API_KEY}",
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_get_promoted_job_artifact(self, mock_requests):
         mock_requests.get.return_value.json.return_value = {
             "artifacts": [
@@ -75,7 +75,7 @@ class ApiTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_create_job_artifact(self, mock_requests):
         api.create_job_artifact(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_REMOTE_URL)
         mock_requests.post.assert_called_with(
@@ -87,7 +87,7 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_create_job_artifact_from_file(self, mock_requests):
         api.create_job_artifact_from_file(
             JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH
@@ -101,7 +101,7 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_update_job_artifact(self, mock_requests):
         api.create_job_artifact_from_file(
             JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True
@@ -114,7 +114,7 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_update_job_artifact(self, mock_requests):
         api.update_job_artifact(
             JOB_ID,
@@ -129,7 +129,7 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("tinarm.api.requests")
+    @mock.patch("ltc_client.api.requests")
     def test_promote_job_artifact(self, mock_requests):
         api.promote_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
         mock_requests.put.assert_called_with(
@@ -137,12 +137,12 @@ class ApiTestCase(unittest.TestCase):
         )
 
     def test_tae_model(self):
-        jobdata = tinarm.NameQuantityPair(
+        jobdata = ltc_client.NameQuantityPair(
             "section",
             "name",
-            tinarm.Quantity(
+            ltc_client.Quantity(
                 magnitude=[4242],
-                units=[tinarm.Unit("millimeter", 2), tinarm.Unit("second", -1)],
+                units=[ltc_client.Unit("millimeter", 2), ltc_client.Unit("second", -1)],
                 shape=[1],
             ),
         )
@@ -155,7 +155,7 @@ class ApiTestCase(unittest.TestCase):
         import pint
 
         inval = pint.Quantity(42, "millimeter")
-        outval = tinarm.Quantity(inval).to_dict()
+        outval = ltc_client.Quantity(inval).to_dict()
         self.assertEqual(outval["magnitude"], [42])
         self.assertEqual(outval["units"], [{"exponent": 1, "name": "millimeter"}])
 
@@ -164,7 +164,7 @@ class ApiTestCase(unittest.TestCase):
         import pint
 
         inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
-        outval = tinarm.Quantity(inval).to_dict()
+        outval = ltc_client.Quantity(inval).to_dict()
         self.assertAlmostEqual(
             outval["magnitude"], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         )
@@ -172,7 +172,7 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
 
     def test_Quantity_from_single_value(self):
-        outval = tinarm.Quantity(42, [tinarm.Unit("millimeter", 2)]).to_dict()
+        outval = ltc_client.Quantity(42, [ltc_client.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], [42])
         self.assertEqual(outval["shape"], [1])
 
@@ -180,18 +180,18 @@ class ApiTestCase(unittest.TestCase):
         import numpy as np
 
         start = np.ones((2, 2, 3))
-        outval = tinarm.Quantity(start, [tinarm.Unit("millimeter", 2)]).to_dict()
+        outval = ltc_client.Quantity(start, [ltc_client.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], start.flatten().tolist())
         self.assertEqual(outval["shape"], [2, 2, 3])
 
     def test_Quantity_from_list(self):
-        outval = tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)]).to_dict()
+        outval = ltc_client.Quantity([42, 43], [ltc_client.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], [42, 43])
         self.assertEqual(outval["shape"], [2])
 
     def test_Quantity_with_invalid_shape(self):
         with self.assertRaises(ValueError):
-            tinarm.Quantity([42, 43], [tinarm.Unit("millimeter", 2)], [2, 2])
+            ltc_client.Quantity([42, 43], [ltc_client.Unit("millimeter", 2)], [2, 2])
 
     def test_tae_model_from_pint(self):
         """
@@ -208,10 +208,10 @@ class ApiTestCase(unittest.TestCase):
         q = pint.UnitRegistry()
         indat = np.random.rand(2, 5, 3) * q.meter
         value, units = indat.to_tuple()
-        jobdata = tinarm.NameQuantityPair(
+        jobdata = ltc_client.NameQuantityPair(
             "section",
             "name",
-            tinarm.Quantity(tuple(value.flatten()), units, indat.shape),
+            ltc_client.Quantity(tuple(value.flatten()), units, indat.shape),
         )
 
         asDict = jobdata.to_dict()
@@ -229,7 +229,7 @@ class ApiTestCase(unittest.TestCase):
             "shape": [2],
             "units": [{"name": "millimeter", "exponent": 2}],
         }
-        out_quant = tinarm.decode(in_quant)
+        out_quant = ltc_client.decode(in_quant)
         self.assertTrue(np.isclose(out_quant.to(q.mm**2).magnitude, [42.0, 43.0]).all())
         self.assertEqual(
             out_quant.shape,
