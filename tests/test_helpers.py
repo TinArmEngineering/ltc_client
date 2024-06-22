@@ -8,6 +8,12 @@ from ltc_client.helpers import Machine, Quantity
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
+class CustomMock(MagicMock):
+    def __format__(self, format_spec):
+        # Implement your formatting logic here
+        # For example, return a fixed string or dynamically handle the format_spec
+        return "Mocked Format"
+    
 
 class TestDecodeFunction(unittest.TestCase):
     @patch("ltc_client.helpers.q.Quantity.from_tuple")
@@ -19,7 +25,7 @@ class TestDecodeFunction(unittest.TestCase):
             "shape": (1,),
             "units": [{"name": "meter", "exponent": 1}],
         }
-        mock_quant = MagicMock()
+        mock_quant = CustomMock()
         mock_from_tuple.return_value = mock_quant
 
         # Execute
@@ -41,7 +47,7 @@ class TestDecodeFunction(unittest.TestCase):
             "units": [{"name": "second", "exponent": -1}],
         }
         expected_array = np.array([1, 2, 3, 4], dtype=np.float64).reshape((2, 2))
-        mock_quant = MagicMock()
+        mock_quant = CustomMock()
         mock_from_tuple.return_value = mock_quant
 
         # Execute
