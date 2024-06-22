@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ltc-client"
-version = "0.2.0"
+version = "0.2"
 description = "\"Client and Worker module for Tin Arm Engineering LTC service\""
 authors = ["Martin West <martin@tinarmengineering.com>"]
 license = "MIT"
@@ -16,11 +16,15 @@ numpy = "^2.0.0"
 webstompy = {git = "https://github.com/point8/webstompy"}
 tqdm = "^4.66.4"
 
+[tool.poetry.group.dev.dependencies]
+black = "^24.4.2"
+pytest = "^8.2.2"
 
 [tool.poetry.group.test.dependencies]
 mock = "^5.1.0"
 teamcity-messages = "^1.32"
 pytest = "^8.2.2"
+coverage = "^7.5.3"
 
 [build-system]
 requires = ["poetry-core"]

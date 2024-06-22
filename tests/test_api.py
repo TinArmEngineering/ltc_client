@@ -6,7 +6,7 @@ import unittest
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
-#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import ltc_client
 
@@ -180,12 +180,16 @@ class ApiTestCase(unittest.TestCase):
         import numpy as np
 
         start = np.ones((2, 2, 3))
-        outval = ltc_client.Quantity(start, [ltc_client.Unit("millimeter", 2)]).to_dict()
+        outval = ltc_client.Quantity(
+            start, [ltc_client.Unit("millimeter", 2)]
+        ).to_dict()
         self.assertEqual(outval["magnitude"], start.flatten().tolist())
         self.assertEqual(outval["shape"], [2, 2, 3])
 
     def test_Quantity_from_list(self):
-        outval = ltc_client.Quantity([42, 43], [ltc_client.Unit("millimeter", 2)]).to_dict()
+        outval = ltc_client.Quantity(
+            [42, 43], [ltc_client.Unit("millimeter", 2)]
+        ).to_dict()
         self.assertEqual(outval["magnitude"], [42, 43])
         self.assertEqual(outval["shape"], [2])
 

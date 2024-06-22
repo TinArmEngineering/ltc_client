@@ -51,7 +51,7 @@ class DefaultIdLogFilter(logging.Filter):
         return True
 
 
-def addLoggingLevel(levelName: str, levelNum: int, methodName: str=None) -> None:
+def addLoggingLevel(levelName: str, levelNum: int, methodName: str = None) -> None:
     """
     Comprehensively adds a new logging level to the `logging` module and the
     currently configured logging class.
@@ -89,6 +89,7 @@ def addLoggingLevel(levelName: str, levelNum: int, methodName: str=None) -> None
     # raise a value error if the level number is not an integer
     if not isinstance(levelNum, int):
         raise ValueError("levelNum must be an integer")
+
     # This method was inspired by the answers to Stack Overflow post
     # http://stackoverflow.com/q/2183233/2988730, especially
     # http://stackoverflow.com/a/13638084/2988730
@@ -103,7 +104,6 @@ def addLoggingLevel(levelName: str, levelNum: int, methodName: str=None) -> None
     setattr(logging, levelName, levelNum)
     setattr(logging.getLoggerClass(), methodName, logForLevel)
     setattr(logging, methodName, logToRoot)
-    
 
 
 addLoggingLevel("PROGRESS", logging.INFO + 2)
