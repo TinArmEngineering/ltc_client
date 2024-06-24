@@ -4,7 +4,7 @@ Issues = "https://github.com/TinArmEngineering/ltc_client/issues"
 
 [tool.poetry]
 name = "ltc-client"
-version = "0.2.1"
+version = "0.2.2"
 description = "Client and Worker module for Tin Arm Engineering LTC service"
 authors = ["Martin West <martin@tinarmengineering.com>"]
 license = "MIT"
@@ -18,12 +18,12 @@ repository = "https://github.com/TinArmEngineering/ltc_client/"
 
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9, <4.0"
 pika = "^1.3.2"
 python-logging-rabbitmq = "^2.3.0"
 requests = "^2.32.3"
 Pint = "^0.24"
-numpy = "^2.0.0"
+numpy = "^1.24"
 webstompy = "^0.1.3"
 tqdm = "^4.66.4"
 
