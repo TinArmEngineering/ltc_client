@@ -8,12 +8,13 @@ from ltc_client.helpers import Machine, Quantity
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
+
 class CustomMock(MagicMock):
     def __format__(self, format_spec):
         # Implement your formatting logic here
         # For example, return a fixed string or dynamically handle the format_spec
         return "Mocked Format"
-    
+
 
 class TestDecodeFunction(unittest.TestCase):
     @patch("ltc_client.helpers.q.Quantity.from_tuple")
@@ -66,57 +67,39 @@ class TestDecodeFunction(unittest.TestCase):
 class TestMachine(unittest.TestCase):
     def setUp(self):
         # Mocking the components with MagicMock to simulate their behavior
-        self.stator =  [
-        {
-            "section": "stator",
-            "name": "slot_liner_thickness",
-            "value": {
-                "magnitude": [
-                    0.125
-                ],
-                "units": [
-                    {
-                        "name": "millimeter",
-                        "exponent": 1
-                    }
-                ],
-                "unit_string": "mm"
+        self.stator = [
+            {
+                "section": "stator",
+                "name": "slot_liner_thickness",
+                "value": {
+                    "magnitude": [0.125],
+                    "units": [{"name": "millimeter", "exponent": 1}],
+                    "unit_string": "mm",
+                },
             }
-        }]
-        self.rotor =  [
-        {
-            "section": "rotor",
-            "name": "slot_liner_thickness",
-            "value": {
-                "magnitude": [
-                    0.125
-                ],
-                "units": [
-                    {
-                        "name": "millimeter",
-                        "exponent": 1
-                    }
-                ],
-                "unit_string": "mm"
+        ]
+        self.rotor = [
+            {
+                "section": "rotor",
+                "name": "slot_liner_thickness",
+                "value": {
+                    "magnitude": [0.125],
+                    "units": [{"name": "millimeter", "exponent": 1}],
+                    "unit_string": "mm",
+                },
             }
-        }]
-        self.winding =[
-        {
-            "section": "rotor",
-            "name": "slot_liner_thickness",
-            "value": {
-                "magnitude": [
-                    0.125
-                ],
-                "units": [
-                    {
-                        "name": "millimeter",
-                        "exponent": 1
-                    }
-                ],
-                "unit_string": "mm"
+        ]
+        self.winding = [
+            {
+                "section": "rotor",
+                "name": "slot_liner_thickness",
+                "value": {
+                    "magnitude": [0.125],
+                    "units": [{"name": "millimeter", "exponent": 1}],
+                    "unit_string": "mm",
+                },
             }
-        }]
+        ]
 
     def test_initialization_with_default_materials(self):
         machine = Machine(self.stator, self.rotor, self.winding)
