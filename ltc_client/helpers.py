@@ -9,6 +9,7 @@ import numpy as np
 import logging
 import uuid
 import asyncio
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,19 @@ q = pint.get_application_registry()
 
 
 def decode(enc):
-    """Decode a quantity encoded object"""
+    """Decode a quantity encoded object
+    
+    Parameters
+    ----------
+    enc : dict
+        The encoded object
+        
+    Returns
+    -------
+    Quantity
+        The decoded quantity object
+            
+    """
     if len(enc["magnitude"]) != 1:
         enc_tuple = tuple(
             (
@@ -182,7 +195,7 @@ class TqdmUpTo(tqdm):
         return self.update(b * bsize - self.n)  # also sets self.n = b * bsize
 
 
-class MyListener(StompListener):
+class ProgressListener(StompListener):
     def __init__(self, job, uid):
         self.job_id = job.id
         self.uid = uid
@@ -197,22 +210,18 @@ class MyListener(StompListener):
     def callback_fn(self, fn):
         self._callback_fn = fn
 
-        # Rest of the code...
-
     def on_message(self, frame):
-        headers = {key.decode(): value.decode() for key, value in frame.header}
-        if headers["subscription"] == self.uid:
+        headers = {key.decode():value.decode() for key, value in frame.header}
+        if headers["subscription"] == self.uid: 
             try:
-                time_str, level_str, mesg_str = frame.message.decode().split(" - ")
+                time_str, level_str, mesg_str = frame.message.decode().split(' - ')
             except ValueError:
-                logger.warning(frame)
-
+                logger.warning("Unable to process", frame)
             else:
-                line = [part.strip() for part in mesg_str.strip().split(":")]
-                if line[1] == "Time":
-                    done, total = (int(part) for part in line[2].split("/"))
-                    self.callback_fn(done, tsize=total)
-                    if done == total:
+                data = json.loads(mesg_str.strip())
+                if 'done' in data:
+                    self.callback_fn(data['done'], tsize=data['total'])
+                    if data['done']==data['total']:
                         self.done = True
                         return self.done
         else:
@@ -220,8 +229,29 @@ class MyListener(StompListener):
 
 
 async def async_job_monitor(api, my_job, connection, position):
+    """
+    Monitor the progress of a job and update the progress bar
+
+    Parameters
+    ----------
+    api : ltc_client.api.API
+        The API object
+    my_job : ltc_client.helpers.Job
+        The job object
+    connection : webstompy.StompConnection
+        The connection object
+    position : int
+        The position of the progress bar
+
+    Returns
+    -------
+    int
+        The status of the job
+
+    
+    """
     uid = str(uuid.uuid4())
-    listener = MyListener(my_job, uid)
+    listener = ProgressListener(my_job, uid)
     connection.add_listener(listener)
     connection.subscribe(destination=f"/topic/{my_job.id}.solver.*.progress", id=uid)
     with TqdmUpTo(
