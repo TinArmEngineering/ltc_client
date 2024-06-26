@@ -4,7 +4,7 @@ Issues = "https://github.com/TinArmEngineering/ltc_client/issues"
 
 [tool.poetry]
 name = "ltc-client"
-version = "0.2.2"
+version = "0.2.3"
 description = "Client and Worker module for Tin Arm Engineering LTC service"
 authors = ["Martin West <martin@tinarmengineering.com>"]
 license = "MIT"
