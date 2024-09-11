@@ -171,6 +171,25 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(outval["shape"], [2, 2, 2])
         self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
 
+    def test_Qauntity_from_mulitdim_pint_value_coerce_shape(self):
+        import numpy as np
+        import pint
+
+        inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
+        outval = ltc_client.Quantity(inval, shape=[2, 4]).to_dict()
+        self.assertEqual(outval["shape"], [2, 4])
+        self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
+
+
+    def test_Qauntity_from_mulitdim_pint_value_invalid_shape(self):
+        import numpy as np
+        import pint
+
+        inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
+        with self.assertRaises(ValueError):
+            outval = ltc_client.Quantity(inval, shape=[2,5]).to_dict()
+        
+
     def test_Quantity_from_single_value(self):
         outval = ltc_client.Quantity(42, [ltc_client.Unit("millimeter", 2)]).to_dict()
         self.assertEqual(outval["magnitude"], [42])
