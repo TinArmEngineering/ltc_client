@@ -29,12 +29,23 @@ tqdm = "^4.66.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
+pytest = "^8.3.3"
+coverage = "^7.6.1"
 
 [tool.poetry.group.test.dependencies]
 mock = "^5.1.0"
 teamcity-messages = "^1.32"
-pytest = "^8.2.2"
-coverage = "^7.5.3"
+pytest = "^8.3.3"
+coverage = "^7.6.1"
+
+
+[tool.coverage.run]
+command_line = "-m pytest"
+
+[tool.coverage.report]
+include = ["ltc_client/*.py"]
+show_missing = true
+
 
 [build-system]
 requires = ["poetry-core"]
