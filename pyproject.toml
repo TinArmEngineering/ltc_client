@@ -59,6 +59,10 @@ format-jinja = """
         {{- base }}.dev{{ distance }}+g{{commit}}
     {%- endif -%}
 """
+[tool.poetry-dynamic-versioning.files."build_id.txt"]
+persistent-substitution = true
+initial-content-jinja = """"##teamcity[buildNumber '{%- if distance == 0 -%}{{- base -}}{%- else -%}{{- base }}.dev{{ distance }}+g{{commit}}{%- endif -%}']"""
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
