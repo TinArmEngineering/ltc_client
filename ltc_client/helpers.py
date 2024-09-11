@@ -18,17 +18,17 @@ q = pint.get_application_registry()
 
 def decode(enc):
     """Decode a quantity encoded object
-    
+
     Parameters
     ----------
     enc : dict
         The encoded object
-        
+
     Returns
     -------
     Quantity
         The decoded quantity object
-            
+
     """
     if len(enc["magnitude"]) != 1:
         enc_tuple = tuple(
@@ -211,17 +211,17 @@ class ProgressListener(StompListener):
         self._callback_fn = fn
 
     def on_message(self, frame):
-        headers = {key.decode():value.decode() for key, value in frame.header}
-        if headers["subscription"] == self.uid: 
+        headers = {key.decode(): value.decode() for key, value in frame.header}
+        if headers["subscription"] == self.uid:
             try:
-                time_str, level_str, mesg_str = frame.message.decode().split(' - ')
+                time_str, level_str, mesg_str = frame.message.decode().split(" - ")
             except ValueError:
                 logger.warning("Unable to process", frame)
             else:
                 data = json.loads(mesg_str.strip())
-                if 'done' in data:
-                    self.callback_fn(data['done'], tsize=data['total'])
-                    if data['done']==data['total']:
+                if "done" in data:
+                    self.callback_fn(data["done"], tsize=data["total"])
+                    if data["done"] == data["total"]:
                         self.done = True
                         return self.done
         else:
@@ -248,7 +248,7 @@ async def async_job_monitor(api, my_job, connection, position):
     int
         The status of the job
 
-    
+
     """
     uid = str(uuid.uuid4())
     listener = ProgressListener(my_job, uid)
