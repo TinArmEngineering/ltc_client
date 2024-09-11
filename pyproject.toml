@@ -4,7 +4,7 @@ Issues = "https://github.com/TinArmEngineering/ltc_client/issues"
 
 [tool.poetry]
 name = "ltc-client"
-version = "0.2.3.dev2+g3afca95"
+version = "0.2.3.dev4+ge33b015"
 description = "Client and Worker module for Tin Arm Engineering LTC service"
 authors = ["Martin West <martin@tinarmengineering.com>"]
 license = "MIT"
@@ -59,9 +59,11 @@ format-jinja = """
         {{- base }}.dev{{ distance }}+g{{commit}}
     {%- endif -%}
 """
-[tool.poetry-dynamic-versioning.files."build_id.txt"]
+
+
+[tool.poetry-dynamic-versioning.files.".build_id"]
 persistent-substitution = true
-initial-content-jinja = """"##teamcity[buildNumber '{%- if distance == 0 -%}{{- base -}}{%- else -%}{{- base }}.dev{{ distance }}+g{{commit}}{%- endif -%}']"""
+initial-content-jinja = """##teamcity[buildNumber '{%- if distance == 0 -%}{{- base -}}{%- else -%}{{- base }}.dev{{ distance }}+g{{commit}}{%- endif -%}']"""
 
 
 [build-system]
