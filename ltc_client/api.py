@@ -22,6 +22,8 @@ JOB_STATUS = {
     "Quarantined": 80,
 }
 
+# trivial change.  This is a comment
+
 STATUS_JOB = {value: key for key, value in JOB_STATUS.items()}
 
 ### Configure Logging
