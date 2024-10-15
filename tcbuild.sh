@@ -3,7 +3,7 @@
 # File to check
 FILE='.build_id'
 
-# Pattern to match
+# Pattern to match, 3 digits separated by dots and ending with a single quote
 PATTERN="[0-9]+\.[0-9]+\.[0-9]+'"
 
 # Check if the file content matches the pattern
