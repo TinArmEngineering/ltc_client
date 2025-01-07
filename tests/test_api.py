@@ -6,8 +6,6 @@ import unittest
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
-# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import ltc_client
 
 NODE_ID = "testnode"
