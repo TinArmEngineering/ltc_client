@@ -28,6 +28,30 @@ api = ltc_client.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=
 
 class ApiTestCase(unittest.TestCase):
     @mock.patch("ltc_client.api.requests")
+    def test_create_log(self, mock_requests):
+        message = ltc_client.Log(
+            level="info",
+            service="test",
+            node=NODE_ID,
+            code="test",
+            message="test message",
+            associated_job_id=JOB_ID,
+        )
+
+        api.create_log(message)
+        mock_requests.post.assert_called_with(
+            url=f"{ROOT_URL}/logs?apikey={API_KEY}",
+            json={
+                "level": "info",
+                "service": "test",
+                "node": NODE_ID,
+                "code": "test",
+                "message": "test message",
+                "associated_job_id": JOB_ID,
+            },
+        )
+
+    @mock.patch("ltc_client.api.requests")
     def test_get_job(self, mock_requests):
         api.get_job(JOB_ID)
         mock_requests.get.assert_called_with(
@@ -180,15 +204,13 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(outval["shape"], [2, 4])
         self.assertEqual(outval["units"], [{"name": "tesla", "exponent": 1}])
 
-
     def test_Qauntity_from_mulitdim_pint_value_invalid_shape(self):
         import numpy as np
         import pint
 
         inval = np.ones((2, 2, 2)) * pint.Quantity(1.0, "tesla")
         with self.assertRaises(ValueError):
-            outval = ltc_client.Quantity(inval, shape=[2,5]).to_dict()
-        
+            outval = ltc_client.Quantity(inval, shape=[2, 5]).to_dict()
 
     def test_Quantity_from_single_value(self):
         outval = ltc_client.Quantity(42, [ltc_client.Unit("millimeter", 2)]).to_dict()

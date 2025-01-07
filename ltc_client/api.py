@@ -3,6 +3,7 @@ import time
 import requests
 from math import prod
 import pint
+import datetime
 
 LOGGING_LEVEL = logging.INFO
 
@@ -31,13 +32,37 @@ LOG_LEVEL = {
     "Trace": 5,
 }
 
-# trivial change.  This is a comment
-
+# Invert the JOB_STATUS dictionary
 STATUS_JOB = {value: key for key, value in JOB_STATUS.items()}
 
 ### Configure Logging
 logger = logging.getLogger()
 logger.setLevel(LOGGING_LEVEL)
+
+
+class Log(object):
+
+    def __init__(self, level: int, service, node, code, message, associated_job_id):
+
+        self.level = level
+        self.service = service
+        self.node = node
+        self.code = code
+        self.message = message
+        self.associated_job_id = associated_job_id
+
+    def to_api(self):
+
+        log = {
+            "level": self.level,
+            "service": self.service,
+            "node": self.node,
+            "code": self.code,
+            "message": self.message,
+            "associated_job_id": self.associated_job_id,
+        }
+
+        return log
 
 
 class Unit:
@@ -365,7 +390,7 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def create_log(self, log):
+    def create_log(self, log: Log):
         """
         Create a server log
         """

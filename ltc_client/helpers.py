@@ -1,4 +1,3 @@
-import datetime
 from . import Quantity, NameQuantityPair
 from .api import JOB_STATUS, STATUS_JOB
 import random
@@ -177,31 +176,6 @@ class Job(object):
 
     def run(self):
         pass
-
-
-class Log(object):
-
-    def __init__(self, level, service, node, code, message, associated_job_id):
-
-        self.level = level
-        self.service = service
-        self.node = node
-        self.code = code
-        self.message = message
-        self.associated_job_id = associated_job_id
-
-    def to_api(self):
-
-        log = {
-            "level": self.level,
-            "service": self.service,
-            "node": self.node,
-            "code": self.code,
-            "message": self.message,
-            "associated_job_id": self.associated_job_id,
-        }
-
-        return log
 
 
 class TqdmUpTo(tqdm):

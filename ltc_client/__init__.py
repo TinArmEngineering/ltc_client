@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # from ltc_client.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
-from ltc_client.api import Api, NameQuantityPair, Quantity, Unit
+from ltc_client.api import Api, NameQuantityPair, Quantity, Unit, Log
 from ltc_client.helpers import Machine, Job, decode
 
 __title__ = "TINARM - Node creation tool for TAE workers"
