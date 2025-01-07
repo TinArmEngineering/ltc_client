@@ -22,6 +22,15 @@ JOB_STATUS = {
     "Quarantined": 80,
 }
 
+LOG_LEVEL = {
+    "Fatal": 0,
+    "Error": 1,
+    "Warning": 2,
+    "Info": 3,
+    "Debug": 4,
+    "Trace": 5,
+}
+
 # trivial change.  This is a comment
 
 STATUS_JOB = {value: key for key, value in JOB_STATUS.items()}
@@ -352,6 +361,17 @@ class Api:
         """
         response = requests.get(
             url=f"{self._root_url}/jobs?apikey={self._api_key}",
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def create_log(self, log):
+        """
+        Create a server log
+        """
+        response = requests.post(
+            url=f"{self._root_url}/logs?apikey={self._api_key}",
+            json=log.to_api(),
         )
         response.raise_for_status()
         return response.json()
