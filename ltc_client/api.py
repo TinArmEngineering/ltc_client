@@ -53,7 +53,6 @@ class Log(object):
         self.code = code
         self.message = message
         self.call_stack = call_stack
-        
 
     def to_api(self):
 
