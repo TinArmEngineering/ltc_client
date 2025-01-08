@@ -42,27 +42,29 @@ logger.setLevel(LOGGING_LEVEL)
 
 class Log(object):
 
-    def __init__(self, level: int, service, node, code, message, associated_job_id):
+    def __init__(
+        self, associated_job_id, level: int, service, node, code, message, call_stack
+    ):
 
+        self.associated_job_id = associated_job_id
         self.level = level
         self.service = service
         self.node = node
         self.code = code
         self.message = message
-        self.associated_job_id = associated_job_id
+        self.call_stack = call_stack
 
     def to_api(self):
 
-        log = {
+        return {
+            "associated_job_id": self.associated_job_id,
             "level": self.level,
             "service": self.service,
             "node": self.node,
             "code": self.code,
             "message": self.message,
-            "associated_job_id": self.associated_job_id,
+            "call_stack": self.call_stack,
         }
-
-        return log
 
 
 class Unit:
