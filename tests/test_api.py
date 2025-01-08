@@ -31,7 +31,6 @@ class ApiTestCase(unittest.TestCase):
             associated_job_id=JOB_ID,
             level="info",
             service="test",
-            node=NODE_ID,
             code="test",
             message="test message",
             call_stack="test callstack",

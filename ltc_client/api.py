@@ -43,16 +43,17 @@ logger.setLevel(LOGGING_LEVEL)
 class Log(object):
 
     def __init__(
-        self, associated_job_id, level: int, service, node, code, message, call_stack
+        self, associated_job_id, level: int, service, code, message, call_stack
     ):
 
         self.associated_job_id = associated_job_id
         self.level = level
         self.service = service
-        self.node = node
+        self.node = None
         self.code = code
         self.message = message
         self.call_stack = call_stack
+        
 
     def to_api(self):
 
@@ -396,6 +397,9 @@ class Api:
         """
         Create a server log
         """
+
+        log.node = self._node_id
+
         response = requests.post(
             url=f"{self._root_url}/logs?apikey={self._api_key}",
             json=log.to_api(),
