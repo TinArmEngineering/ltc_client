@@ -3,7 +3,6 @@ import time
 import requests
 from math import prod
 import pint
-import datetime
 
 LOGGING_LEVEL = logging.INFO
 
