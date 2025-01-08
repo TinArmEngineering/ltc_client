@@ -34,7 +34,7 @@ class ApiTestCase(unittest.TestCase):
             node=NODE_ID,
             code="test",
             message="test message",
-            call_stack="test call stack",
+            call_stack="test callstack",
         )
 
         api.create_log(message)
@@ -47,7 +47,7 @@ class ApiTestCase(unittest.TestCase):
                 "node": NODE_ID,
                 "code": "test",
                 "message": "test message",
-                "call_stack": "test call stack",
+                "call_stack": "test callstack",
             },
         )
 
