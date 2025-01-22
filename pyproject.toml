@@ -1,13 +1,11 @@
 [build-system]
-requires = ["poetry-core>=1.0.0",
- "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 
 
 [project]
 name = "ltc-client"
-version = "0.0.0"
 description = "Client and Worker module for Tin Arm Engineering LTC service"
 authors = [
     {name = "Martin West", email = "martin@tinarmengineering.com"}
@@ -30,6 +28,7 @@ dependencies = [
     "webstompy @ git+https://github.com/TinArmEngineering/webstompy.git",
     "tqdm>=4.66.4",
 ]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/TinArmEngineering/ltc_client/"
@@ -37,6 +36,8 @@ Issues = "https://github.com/TinArmEngineering/ltc_client/issues"
 Repository = "https://github.com/TinArmEngineering/ltc_client/"
 
 
+[tool.poetry]
+version = "0.0.0"
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
 pytest = "^8.3.3"
@@ -53,6 +54,10 @@ command_line = "-m pytest"
 include = ["ltc_client/*.py"]
 show_missing = true
 
+
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
 
 
 [tool.poetry-dynamic-versioning]
