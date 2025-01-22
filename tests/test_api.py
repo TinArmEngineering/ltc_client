@@ -28,24 +28,25 @@ class ApiTestCase(unittest.TestCase):
     @mock.patch("ltc_client.api.requests")
     def test_create_log(self, mock_requests):
         message = ltc_client.Log(
+            associated_job_id=JOB_ID,
             level="info",
             service="test",
-            node=NODE_ID,
             code="test",
             message="test message",
-            associated_job_id=JOB_ID,
+            call_stack="test callstack",
         )
 
         api.create_log(message)
         mock_requests.post.assert_called_with(
             url=f"{ROOT_URL}/logs?apikey={API_KEY}",
             json={
+                "associated_job_id": JOB_ID,
                 "level": "info",
                 "service": "test",
                 "node": NODE_ID,
                 "code": "test",
                 "message": "test message",
-                "associated_job_id": JOB_ID,
+                "call_stack": "test callstack",
             },
         )
 
