@@ -28,6 +28,6 @@ TOTAL                      466    279    40%
 ```
 To push a release with a tag, 
 ```
-git tag 0.2.15
-git push --atomic origin main 0.2.15
+git tag 0.2.19
+git push --atomic origin main 0.2.19
 ```
