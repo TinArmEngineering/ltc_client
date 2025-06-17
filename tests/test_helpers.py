@@ -252,20 +252,24 @@ class TestJob(unittest.TestCase):
         self.assertIsInstance(result["data"], list)
         self.assertIsInstance(result["materials"], list)
         self.assertIsInstance(result["string_data"], list)
+
     def test_mesh_reuse_to_api(self):
         job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
         # Test setter
         job.mesh_reuse_series = "new-series"
         result = job.to_api()
-        self.assertIn({"name": "mesh_reuse_series","value": "new-series"}, result["string_data"])
+        self.assertIn(
+            {"name": "mesh_reuse_series", "value": "new-series"}, result["string_data"]
+        )
 
         # Test default value
         job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
         result = job.to_api()
-        self.assertIn({
-            "name": "mesh_reuse_series",
-            "value": job.mesh_reuse_series
-        }, result["string_data"])
+        self.assertIn(
+            {"name": "mesh_reuse_series", "value": job.mesh_reuse_series},
+            result["string_data"],
+        )
+
 
 if __name__ == "__main__":
     if is_running_under_teamcity():

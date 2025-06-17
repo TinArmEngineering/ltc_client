@@ -192,11 +192,9 @@ class Job(object):
             NameQuantityPair("simulation", k, Quantity(*self.simulation[k].to_tuple()))
             for k in self.simulation
         ]
-        job["string_data"]=[
-                {"name": name, "value": value}
-                for name, value in self._string_data.items()
-            ]
-        
+        job["string_data"] = [
+            {"name": name, "value": value} for name, value in self._string_data.items()
+        ]
 
         job["data"].extend(list(x.to_dict() for x in operating_point_api))
         job["data"].extend(list(x.to_dict() for x in simulation_api))
