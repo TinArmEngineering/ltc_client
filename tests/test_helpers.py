@@ -134,6 +134,7 @@ class TestMachine(unittest.TestCase):
     #         item["quantity"] = Quantity(*item["quantity"]["magnitude"]).to_dict()
     #     self.assertEqual(api_output, expected_api_output)
 
+
 class TestJob(unittest.TestCase):
     def setUp(self):
         # Mock machine object
@@ -143,27 +144,27 @@ class TestJob(unittest.TestCase):
         ]
         self.mock_machine.materials = {
             "rotor_lamination": "66018e5d1cd3bd0d3453646f",
-            "stator_slot_winding": "66018e5d1cd3bd0d34536470"
+            "stator_slot_winding": "66018e5d1cd3bd0d34536470",
         }
-        
+
         # Mock operating point and simulation
-        self.mock_operating_point = {
-            "speed": MagicMock(),
-            "torque": MagicMock()
-        }
+        self.mock_operating_point = {"speed": MagicMock(), "torque": MagicMock()}
         self.mock_operating_point["speed"].to_tuple.return_value = (1000, (("rpm", 1),))
         self.mock_operating_point["torque"].to_tuple.return_value = (50, (("N*m", 1),))
-        
-        self.mock_simulation = {
-            "timestep_intervals": MagicMock()
-        }
-        self.mock_simulation["timestep_intervals"].to_tuple.return_value = (100, (("", 1),))
+
+        self.mock_simulation = {"timestep_intervals": MagicMock()}
+        self.mock_simulation["timestep_intervals"].to_tuple.return_value = (
+            100,
+            (("", 1),),
+        )
 
     def test_job_initialization_with_default_title(self):
-        with patch.object(Job, 'generate_title', return_value='test-title'):
-            job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
-            
-            self.assertEqual(job.title, 'test-title')
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine, self.mock_operating_point, self.mock_simulation
+            )
+
+            self.assertEqual(job.title, "test-title")
             self.assertEqual(job.type, "electromagnetic_spmbrl_fscwseg")
             self.assertEqual(job.status, 0)
             self.assertEqual(job.machine, self.mock_machine)
@@ -172,47 +173,69 @@ class TestJob(unittest.TestCase):
             self.assertIsInstance(job.mesh_reuse_series, str)
 
     def test_job_initialization_with_custom_title(self):
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation, title="custom-title")
-        
+        job = Job(
+            self.mock_machine,
+            self.mock_operating_point,
+            self.mock_simulation,
+            title="custom-title",
+        )
+
         self.assertEqual(job.title, "custom-title")
         self.assertEqual(job.type, "electromagnetic_spmbrl_fscwseg")
         self.assertEqual(job.status, 0)
 
     def test_job_initialization_with_mesh_reuse_series(self):
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation, 
-                    mesh_reuse_series="custom-series")
-        
+        job = Job(
+            self.mock_machine,
+            self.mock_operating_point,
+            self.mock_simulation,
+            mesh_reuse_series="custom-series",
+        )
+
         self.assertEqual(job.mesh_reuse_series, "custom-series")
 
     def test_mesh_reuse_series_property(self):
         job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
-        
+
         # Test setter
         job.mesh_reuse_series = "new-series"
         self.assertEqual(job.mesh_reuse_series, "new-series")
-        
+
         # Test validation
         with self.assertRaises(ValueError):
             job.mesh_reuse_series = 123
 
     def test_job_repr(self):
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation, title="test-job")
-        
+        job = Job(
+            self.mock_machine,
+            self.mock_operating_point,
+            self.mock_simulation,
+            title="test-job",
+        )
+
         expected_repr = f"Job({self.mock_machine}, {self.mock_operating_point}, {self.mock_simulation})"
         self.assertEqual(repr(job), expected_repr)
 
-
-    @patch('ltc_client.helpers.NameQuantityPair')
-    @patch('ltc_client.helpers.Quantity')
+    @patch("ltc_client.helpers.NameQuantityPair")
+    @patch("ltc_client.helpers.Quantity")
     def test_to_api(self, mock_quantity, mock_name_quantity_pair):
         # Setup mocks
         mock_nqp_instance = MagicMock()
-        mock_nqp_instance.to_dict.return_value = {"name": "test", "key": "test_key", "quantity": {"magnitude": 1.0}}
+        mock_nqp_instance.to_dict.return_value = {
+            "name": "test",
+            "key": "test_key",
+            "quantity": {"magnitude": 1.0},
+        }
         mock_name_quantity_pair.return_value = mock_nqp_instance
-        
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation, title="test-job")
+
+        job = Job(
+            self.mock_machine,
+            self.mock_operating_point,
+            self.mock_simulation,
+            title="test-job",
+        )
         result = job.to_api()
-        
+
         # Verify structure
         self.assertIn("status", result)
         self.assertIn("title", result)
@@ -221,7 +244,7 @@ class TestJob(unittest.TestCase):
         self.assertIn("data", result)
         self.assertIn("materials", result)
         self.assertIn("string_data", result)
-        
+
         self.assertEqual(result["status"], 0)
         self.assertEqual(result["title"], "test-job")
         self.assertEqual(result["type"], "electromagnetic_spmbrl_fscwseg")

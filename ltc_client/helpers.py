@@ -107,7 +107,14 @@ class Machine(object):
 
 
 class Job(object):
-    def __init__(self, machine: Machine, operating_point, simulation, mesh_reuse_series = "", title=None):
+    def __init__(
+        self,
+        machine: Machine,
+        operating_point,
+        simulation,
+        mesh_reuse_series="",
+        title=None,
+    ):
         if title is None:
             self.title = self.generate_title()
         else:
@@ -122,19 +129,20 @@ class Job(object):
         else:
             mesh_reuse_series = str(uuid.uuid4())
         self._string_data = {"mesh_reuse_series": mesh_reuse_series}
+
     @property
     def mesh_reuse_series(self):
         return self._string_data["mesh_reuse_series"]
+
     @mesh_reuse_series.setter
     def mesh_reuse_series(self, value):
         if not isinstance(value, str):
             raise ValueError("mesh_reuse_series must be a string")
         self._string_data["mesh_reuse_series"] = value
+
     @mesh_reuse_series.getter
     def mesh_reuse_series(self):
         return self._string_data["mesh_reuse_series"]
-
-    
 
     def __repr__(self) -> str:
         return f"Job({self.machine}, {self.operating_point}, {self.simulation})"
@@ -170,7 +178,7 @@ class Job(object):
             "tasks": 11,
             "data": [],
             "materials": [],
-            "string_data":[]
+            "string_data": [],
         }
 
         operating_point_api = [
@@ -184,7 +192,12 @@ class Job(object):
             NameQuantityPair("simulation", k, Quantity(*self.simulation[k].to_tuple()))
             for k in self.simulation
         ]
-        job["string_data"].append([{"name":name, "value": value} for name, value in self._string_data.items()])
+        job["string_data"].append(
+            [
+                {"name": name, "value": value}
+                for name, value in self._string_data.items()
+            ]
+        )
 
         job["data"].extend(list(x.to_dict() for x in operating_point_api))
         job["data"].extend(list(x.to_dict() for x in simulation_api))
@@ -194,7 +207,6 @@ class Job(object):
             for key, value in self.machine.materials.items()
         ]
         return job
-
 
 
 class TqdmUpTo(tqdm):
