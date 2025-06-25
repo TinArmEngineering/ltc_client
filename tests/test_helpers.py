@@ -3,10 +3,13 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 
 from ltc_client.helpers import decode
-from ltc_client.helpers import Machine, Job
+from ltc_client.helpers import Machine, Job, Material
 
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
+import pint
+
+Q = pint.get_application_registry()
 
 
 class CustomMock(MagicMock):
@@ -269,6 +272,77 @@ class TestJob(unittest.TestCase):
             {"name": "mesh_reuse_series", "value": job.mesh_reuse_series},
             result["string_data"],
         )
+
+
+class TestMaterial(unittest.TestCase):
+    def test_material_initialization(self):
+        # Test default initialization
+        material = Material(name="test_name", reference="www.example.com")
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.reference, "www.example.com")
+        self.assertTrue(isinstance(material.key_words, list))
+        self.assertTrue(isinstance(material.material_properties, dict))
+
+        # Test initailization without reference or name
+        with self.assertRaises(TypeError):
+            material = Material(name="test_name")
+        with self.assertRaises(TypeError):
+            material = Material(reference="www.example.com")
+        material = Material(
+            name="test_name",
+            reference="www.example.com",
+            key_words=["keyword1", "keyword2"],
+            material_properties={"property1": 10 * Q.mm},
+        )
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.reference, "www.example.com")
+        self.assertEqual(material.key_words, ["keyword1", "keyword2"])
+        self.assertEqual(material.material_properties, {"property1": 10 * Q.mm})
+
+    def test_material_to_api(self):
+        material = Material(
+            name="test_name",
+            reference="www.example.com",
+            key_words=["keyword1", "keyword2"],
+            material_properties={"property1": 10 * Q.mm},
+        )
+        api_data = material.to_api()
+        self.assertEqual(api_data["name"], "test_name")
+        self.assertEqual(api_data["reference"], "www.example.com")
+        self.assertEqual(api_data["key_words"], ["keyword1", "keyword2"])
+        self.assertTrue(isinstance(api_data["data"], list))
+        self.assertTrue(isinstance(api_data["data"][0], dict))
+        self.assertEqual(api_data["data"][0]["name"], "property1")
+        self.assertEqual(api_data["data"][0]["value"]["magnitude"], [10])
+        self.assertEqual(api_data["data"][0]["value"]["shape"], [1])
+        self.assertEqual(
+            api_data["data"][0]["value"]["units"],
+            [{"name": "millimeter", "exponent": 1}],
+        )
+
+    def test_material_from_api(self):
+        api_data = {
+            "id": "66018e5d1cd3bd0d3453646f",
+            "reference": "www.example.com",
+            "name": "test_name",
+            "key_words": ["keyword1", "keyword2"],
+            "data": [
+                {
+                    "section": "material_properties",
+                    "name": "property1",
+                    "value": {
+                        "magnitude": [10],
+                        "shape": [1],
+                        "units": [{"name": "millimeter", "exponent": 1}],
+                    },
+                }
+            ],
+        }
+        material = Material.from_api(api_data)
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.reference, "www.example.com")
+        self.assertEqual(material.key_words, ["keyword1", "keyword2"])
+        self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,11 @@ import requests
 from math import prod
 import pint
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .helpers import Material
+
 LOGGING_LEVEL = logging.INFO
 
 JOB_STATUS = {
@@ -371,14 +376,28 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def get_material(self, material_id):
+    def get_material(self, material_id) -> "Material":
         """
         Get a material from the TAE API
         """
+        from .helpers import Material
         response = requests.get(
             url=f"{self._root_url}/materials/{material_id}?apikey={self._api_key}",
         )
         response.raise_for_status()
+        return Material.from_api(response.json())
+    
+    def create_material(self, material: "Material"):
+        """
+        Create a material for the TAE API
+        """
+        response = requests.post(
+            url=f"{self._root_url}/materials?apikey={self._api_key}",
+            json=material.to_api(),
+        )
+        response.raise_for_status()
+        if response.status_code == 200:
+            material.material_id = response.json()["id"]
         return response.json()
 
     def get_jobs(self):

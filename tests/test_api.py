@@ -2,11 +2,13 @@ import os
 import sys
 import mock
 import unittest
+import pint 
 
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
 import ltc_client
+from ltc_client import Api, NameQuantityPair, Quantity, Unit, Log, Material, decode
 
 NODE_ID = "testnode"
 ROOT_URL = "http://example.com"
@@ -19,7 +21,8 @@ JOB_ARTIFACT_TYPE = "TEST_PLOT"
 JOB_ARTIFACT_FILE_PATH = "/lala/test_plot.png"
 JOB_ARTIFACT_FILE_URL = "file://testnode" + JOB_ARTIFACT_FILE_PATH
 JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
-
+MATERIAL_ID = "66018e5d1cd3bd0d3453646f"
+Q = pint.get_application_registry()
 
 api = ltc_client.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID)
 
@@ -285,7 +288,61 @@ class ApiTestCase(unittest.TestCase):
         )
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
+class MaterialTestCase(unittest.TestCase):
+    @mock.patch("ltc_client.api.requests")
+    def test_get_material(self, mock_requests):
+        mock_requests.get.return_value.json.return_value = {
+            "id": MATERIAL_ID,
+            "reference": "www.example.com",
+            "name": "test_name",
+            "key_words": ["keyword1", "keyword2"],
+            "data": [
+                {
+                    "section": "material_properties",
+                    "name": "property1",
+                    "value": {
+                        "magnitude": [10],
+                        "shape": [1],
+                        "units": [{"name": "millimeter", "exponent": 1}],
+                    },
+                }
+            ],
+        }
+        material = api.get_material(MATERIAL_ID)
+        
+        mock_requests.get.assert_called_with(
+            url=f"{ROOT_URL}/materials/{MATERIAL_ID}?apikey={API_KEY}",
+        )
 
+        
+        self.assertEqual(material.id, MATERIAL_ID)
+        self.assertEqual(material.reference, "www.example.com")
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.key_words, ["keyword1", "keyword2"])
+        self.assertEqual(len(material.material_properties), 1) # Assuming one property in data
+        self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
+
+    @mock.patch("ltc_client.api.requests")
+    def test_create_material(self, mock_requests):
+        api_data = {
+            "id": "66018e5d1cd3bd0d3453646f",
+            "reference": "www.example.com",
+            "name": "test_name",
+            "key_words": ["keyword1", "keyword2"],
+            "data": [
+                {
+                    "section": "material_properties",
+                    "name": "property1",
+                    "value": {
+                        "magnitude": [10],
+                        "shape": [1],
+                        "units": [{"name": "millimeter", "exponent": 1}],
+                    },
+                }
+            ],
+        }
+
+                
 if __name__ == "__main__":
     if is_running_under_teamcity():
         runner = TeamcityTestRunner()
