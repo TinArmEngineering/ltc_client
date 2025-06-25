@@ -381,12 +381,13 @@ class Api:
         Get a material from the TAE API
         """
         from .helpers import Material
+
         response = requests.get(
             url=f"{self._root_url}/materials/{material_id}?apikey={self._api_key}",
         )
         response.raise_for_status()
         return Material.from_api(response.json())
-    
+
     def create_material(self, material: "Material"):
         """
         Create a material for the TAE API

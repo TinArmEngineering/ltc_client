@@ -62,9 +62,7 @@ def decode(enc):
 
 
 class Material(object):
-    def __init__(
-        self, name, reference, key_words=[], material_properties={}, id=None
-    ):
+    def __init__(self, name, reference, key_words=[], material_properties={}, id=None):
         """
         Parameters
         ----------
@@ -110,7 +108,11 @@ class Material(object):
             name=db_material["name"],
             reference=db_material["reference"],
             key_words=db_material["key_words"],
-            material_properties={k["name"]: decode(k["value"]) for k in db_material["data"] if k["section"] == "material_properties"},
+            material_properties={
+                k["name"]: decode(k["value"])
+                for k in db_material["data"]
+                if k["section"] == "material_properties"
+            },
             id=db_material.get("id", str(uuid4())),
         )
         return material

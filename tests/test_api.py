@@ -2,7 +2,7 @@ import os
 import sys
 import mock
 import unittest
-import pint 
+import pint
 
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
@@ -288,6 +288,7 @@ class ApiTestCase(unittest.TestCase):
         )
         self.assertEqual(out_quant.dimensionality, q.UnitsContainer({"[length]": 2.0}))
 
+
 class MaterialTestCase(unittest.TestCase):
     @mock.patch("ltc_client.api.requests")
     def test_get_material(self, mock_requests):
@@ -309,17 +310,18 @@ class MaterialTestCase(unittest.TestCase):
             ],
         }
         material = api.get_material(MATERIAL_ID)
-        
+
         mock_requests.get.assert_called_with(
             url=f"{ROOT_URL}/materials/{MATERIAL_ID}?apikey={API_KEY}",
         )
 
-        
         self.assertEqual(material.id, MATERIAL_ID)
         self.assertEqual(material.reference, "www.example.com")
         self.assertEqual(material.name, "test_name")
         self.assertEqual(material.key_words, ["keyword1", "keyword2"])
-        self.assertEqual(len(material.material_properties), 1) # Assuming one property in data
+        self.assertEqual(
+            len(material.material_properties), 1
+        )  # Assuming one property in data
         self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
 
     @mock.patch("ltc_client.api.requests")
@@ -342,7 +344,7 @@ class MaterialTestCase(unittest.TestCase):
             ],
         }
 
-                
+
 if __name__ == "__main__":
     if is_running_under_teamcity():
         runner = TeamcityTestRunner()
