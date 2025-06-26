@@ -344,6 +344,53 @@ class TestMaterial(unittest.TestCase):
         self.assertEqual(material.key_words, ["keyword1", "keyword2"])
         self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
 
+    def test_material_from_api_optional(self):
+        api_data = {
+            "id": "66018e5d1cd3bd0d3453646f",
+            # No ref "reference": "www.example.com",
+            "name": "test_name",
+            "key_words": ["keyword1", "keyword2"],
+            "data": [
+                {
+                    "section": "material_properties",
+                    "name": "property1",
+                    "value": {
+                        "magnitude": [10],
+                        "shape": [1],
+                        "units": [{"name": "millimeter", "exponent": 1}],
+                    },
+                }
+            ],
+        }
+        material = Material.from_api(api_data)
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.reference, "")
+        self.assertEqual(material.key_words, ["keyword1", "keyword2"])
+        self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
+
+        api_data = {
+            "id": "66018e5d1cd3bd0d3453646f",
+            "reference": "www.example.com",
+            "name": "test_name",
+            # No "key_words": ["keyword1", "keyword2"],
+            "data": [
+                {
+                    "section": "material_properties",
+                    "name": "property1",
+                    "value": {
+                        "magnitude": [10],
+                        "shape": [1],
+                        "units": [{"name": "millimeter", "exponent": 1}],
+                    },
+                }
+            ],
+        }
+        material = Material.from_api(api_data)
+        self.assertEqual(material.name, "test_name")
+        self.assertEqual(material.reference, "www.example.com")
+        self.assertEqual(material.key_words, [])
+        self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
+
 
 if __name__ == "__main__":
     if is_running_under_teamcity():

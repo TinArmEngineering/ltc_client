@@ -106,8 +106,8 @@ class Material(object):
         """Load the material from the API db_material"""
         material = cls(
             name=db_material["name"],
-            reference=db_material["reference"],
-            key_words=db_material["key_words"],
+            reference=db_material.get("reference", ""),
+            key_words=db_material.get("key_words", []),
             material_properties={
                 k["name"]: decode(k["value"])
                 for k in db_material["data"]
