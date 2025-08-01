@@ -170,6 +170,7 @@ class Job(object):
         operating_point,
         simulation,
         mesh_reuse_series="",
+        netlist = None,
         title=None,
     ):
         if title is None:
@@ -185,7 +186,11 @@ class Job(object):
             mesh_reuse_series = mesh_reuse_series
         else:
             mesh_reuse_series = str(uuid.uuid4())
-        self._string_data = {"mesh_reuse_series": mesh_reuse_series, "netlist": ""}
+        if netlist:
+            netliststr = json.dumps(netlist)
+        else:
+            netliststr = ""
+        self._string_data = {"mesh_reuse_series": mesh_reuse_series, "netlist": netliststr}
 
     @property
     def netlist(self):
