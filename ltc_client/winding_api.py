@@ -34,7 +34,7 @@ class WindingApi:
             json=winding_params,
         )
         response.raise_for_status()
-        winding_report = response.text()
+        winding_report = response.text
         return winding_report
 
     def create_winding(self, winding_params):
