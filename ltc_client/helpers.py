@@ -185,7 +185,18 @@ class Job(object):
             mesh_reuse_series = mesh_reuse_series
         else:
             mesh_reuse_series = str(uuid.uuid4())
-        self._string_data = {"mesh_reuse_series": mesh_reuse_series}
+        self._string_data = {"mesh_reuse_series": mesh_reuse_series, "netlist": ""}
+
+    @property
+    def netlist(self):
+        if self._string_data["netlist"] == "":
+            return
+        else:
+            return json.loads(self._string_data["netlist"])
+
+    @netlist.setter
+    def netlist(self, value):
+        self._string_data["netlist"] = json.dumps(value)
 
     @property
     def mesh_reuse_series(self):
@@ -196,10 +207,6 @@ class Job(object):
         if not isinstance(value, str):
             raise ValueError("mesh_reuse_series must be a string")
         self._string_data["mesh_reuse_series"] = value
-
-    @mesh_reuse_series.getter
-    def mesh_reuse_series(self):
-        return self._string_data["mesh_reuse_series"]
 
     def __repr__(self) -> str:
         return f"Job({self.machine}, {self.operating_point}, {self.simulation})"

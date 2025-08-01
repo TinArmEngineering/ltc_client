@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
@@ -207,6 +208,193 @@ class TestJob(unittest.TestCase):
         # Test validation
         with self.assertRaises(ValueError):
             job.mesh_reuse_series = 123
+
+    def test_job_netlist_property(self):
+        """Test the getter and setter for the netlist property."""
+        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
+        # Test initial value
+        self.assertEqual(job.netlist, None)
+
+        # Test setting and getting
+        netlist_data = {"component": "resistor", "value": 100}
+        job.netlist = netlist_data
+        self.assertEqual(job.netlist, netlist_data)
+
+    def test_job_to_api_with_string_data(self):
+        """Test that to_api includes netlist and mesh_reuse_series."""
+        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
+
+        netlist_data = {
+            "I_A": {
+                "circuit": 1,
+                "neg_pin": 1,
+                "pos_pin": 2,
+                "value": {
+                    "magnitude": [1],
+                    "shape": [1],
+                    "units": [{"exponent": 1, "name": "ampere"}],
+                },
+            },
+            "I_B": {
+                "circuit": 1,
+                "neg_pin": 1,
+                "pos_pin": 3,
+                "value": {
+                    "magnitude": [1],
+                    "shape": [1],
+                    "units": [{"exponent": 1, "name": "ampere"}],
+                },
+            },
+            "I_C": {
+                "circuit": 1,
+                "neg_pin": 1,
+                "pos_pin": 4,
+                "value": {
+                    "magnitude": [1],
+                    "shape": [1],
+                    "units": [{"exponent": 1, "name": "ampere"}],
+                },
+            },
+            "R_A": {
+                "circuit": 1,
+                "neg_pin": 7,
+                "pos_pin": 1,
+                "value": {
+                    "magnitude": [0.01],
+                    "shape": [],
+                    "units": [{"exponent": 1, "name": "ohm"}],
+                },
+            },
+            "R_B": {
+                "circuit": 1,
+                "neg_pin": 9,
+                "pos_pin": 1,
+                "value": {
+                    "magnitude": [0.01],
+                    "shape": [],
+                    "units": [{"exponent": 1, "name": "ohm"}],
+                },
+            },
+            "R_C": {
+                "circuit": 1,
+                "neg_pin": 10,
+                "pos_pin": 1,
+                "value": {
+                    "magnitude": [0.01],
+                    "shape": [],
+                    "units": [{"exponent": 1, "name": "ohm"}],
+                },
+            },
+            "slot_0_area_layer_0": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 1,
+                "master_body_list": ["slot_0_area_layer_0"],
+                "neg_pin": 4,
+                "pos_pin": 5,
+            },
+            "slot_0_area_layer_1": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 2,
+                "master_body_list": ["slot_0_area_layer_1"],
+                "neg_pin": 6,
+                "pos_pin": 2,
+            },
+            "slot_1_area_layer_0": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 3,
+                "master_body_list": ["slot_1_area_layer_0"],
+                "neg_pin": 6,
+                "pos_pin": 7,
+            },
+            "slot_1_area_layer_1": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 4,
+                "master_body_list": ["slot_1_area_layer_1"],
+                "neg_pin": 8,
+                "pos_pin": 3,
+            },
+            "slot_2_area_layer_0": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 5,
+                "master_body_list": ["slot_2_area_layer_0"],
+                "neg_pin": 8,
+                "pos_pin": 9,
+            },
+            "slot_2_area_layer_1": {
+                "circuit": 1,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"exponent": 1, "name": "ohm"}],
+                    },
+                    "turns_per_coil": 25,
+                },
+                "component_number": 6,
+                "master_body_list": ["slot_2_area_layer_1"],
+                "neg_pin": 10,
+                "pos_pin": 5,
+            },
+        }
+
+        job.netlist = netlist_data
+
+        series_id = "test-series-xyz"
+        job.mesh_reuse_series = series_id
+
+        api_data = job.to_api()
+
+        expected_string_data = [
+            {"name": "mesh_reuse_series", "value": series_id},
+            {"name": "netlist", "value": json.dumps(netlist_data)},
+        ]
+
+        self.assertIn("string_data", api_data)
+        # Sort for comparison as dict item order is not guaranteed
+        self.assertEqual(
+            sorted(api_data["string_data"], key=lambda x: x["name"]),
+            sorted(expected_string_data, key=lambda x: x["name"]),
+        )
 
     def test_job_repr(self):
         job = Job(
