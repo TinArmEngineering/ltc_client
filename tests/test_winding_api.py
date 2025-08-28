@@ -18,7 +18,7 @@ def mock_response():
 
 def test_create_winding_report(winding_api, mock_response):
     with patch("requests.request", return_value=mock_response) as mock_request:
-        mock_response.text = "test report" 
+        mock_response.text = "test report"
         params = {"param": "value"}
 
         result = winding_api.create_winding_report(params)

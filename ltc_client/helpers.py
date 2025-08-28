@@ -277,6 +277,50 @@ class Job(object):
         ]
         return job
 
+    def from_api(self, job_dict):
+        self.title = job_dict.get("title", self.generate_title())
+        self.status = job_dict.get("status", 0)
+        self.type = job_dict.get("type", "electromagnetic_spmbrl_fscwseg")
+        self.id = job_dict.get("id", None)
+        self._string_data = {
+            item["name"]: item["value"] for item in job_dict.get("string_data", [])
+        }
+        self.operating_point = {
+            item["name"]: decode(item["value"])
+            for item in job_dict.get("data", [])
+            if item["section"] == "operating_point"
+        }
+        self.simulation = {
+            item["name"]: decode(item["value"])
+            for item in job_dict.get("data", [])
+            if item["section"] == "simulation"
+        }
+        stator_data = {
+            item["name"]: decode(item["value"])
+            for item in job_dict.get("data", [])
+            if item["section"] in ["stator"]
+        }
+        winding_data = {
+            item["name"]: decode(item["value"])
+            for item in job_dict.get("data", [])
+            if item["section"] in ["stator"]
+        }
+        rotor_data = {
+            item["name"]: decode(item["value"])
+            for item in job_dict.get("data", [])
+            if item["section"] in ["rotor"]
+        }
+        material_data = {
+            thing["part"]: thing["material_id"]
+            for thing in job_dict.get("materials", [])
+        }
+        self.machine = Machine(
+            stator=stator_data,
+            rotor=rotor_data,
+            winding=winding_data,
+            materials=material_data,
+        )
+
 
 class TqdmUpTo(tqdm):
     """Provides `update_to(n)` which uses `tqdm.update(delta_n)`."""

@@ -461,6 +461,61 @@ class TestJob(unittest.TestCase):
             result["string_data"],
         )
 
+    def test_job_to_api_from_api_round_trip(self):
+        """Test that Job.to_api() and Job.from_api() produce equivalent objects."""
+        # Create real pint quantities for testing
+        operating_point = {"speed": 1000 * Q.rpm, "torque": 50 * Q.N * Q.m}
+        simulation = {"timestep_intervals": 100 * Q.count}
+        stator = {"slot_liner_thickness": 0.125 * Q.mm}
+        rotor = {"slot_liner_thickness": 0.125 * Q.mm}
+        winding = {"slot_liner_thickness": 0.125 * Q.mm}
+        materials = {
+            "rotor_lamination": "test_material_1",
+            "stator_slot_winding": "test_material_2",
+        }
+
+        machine = Machine(stator, rotor, winding, materials)
+        original_job = Job(
+            machine, operating_point, simulation, title="test-round-trip"
+        )
+        original_job.netlist = {"test": "netlist_data"}
+        original_job.mesh_reuse_series = "test-series"
+
+        # Convert to API format
+        api_dict = original_job.to_api()
+        # Ensure 'id' is present for from_api
+        api_dict["id"] = "test-job-id-123"
+
+        # Create new job instance and load from API
+        new_job = Job.__new__(Job)  # Create without calling __init__
+        new_job.from_api(api_dict)
+
+        # Compare attributes
+        self.assertEqual(new_job.title, original_job.title)
+        self.assertEqual(new_job.type, original_job.type)
+        self.assertEqual(new_job.status, original_job.status)
+        self.assertIsInstance(new_job.id, str)
+        self.assertEqual(new_job._string_data, original_job._string_data)
+        self.assertEqual(new_job.netlist, original_job.netlist)
+        self.assertEqual(new_job.mesh_reuse_series, original_job.mesh_reuse_series)
+        self.assertIsInstance(new_job.machine, Machine)
+
+        # Compare operating point quantities
+        for key in original_job.operating_point:
+            self.assertEqual(
+                new_job.operating_point[key], original_job.operating_point[key]
+            )
+
+        # Compare simulation quantities
+        for key in original_job.simulation:
+            self.assertEqual(new_job.simulation[key], original_job.simulation[key])
+
+        # Compare machine components
+        self.assertEqual(new_job.machine.stator, original_job.machine.stator)
+        self.assertEqual(new_job.machine.rotor, original_job.machine.rotor)
+        self.assertEqual(new_job.machine.winding, original_job.machine.winding)
+        self.assertEqual(new_job.machine.materials, original_job.machine.materials)
+
 
 class TestMaterial(unittest.TestCase):
     def test_material_initialization(self):
