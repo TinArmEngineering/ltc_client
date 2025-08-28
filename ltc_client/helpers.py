@@ -303,7 +303,7 @@ class Job(object):
         winding_data = {
             item["name"]: decode(item["value"])
             for item in job_dict.get("data", [])
-            if item["section"] in ["stator"]
+            if item["section"] in ["winding"]
         }
         rotor_data = {
             item["name"]: decode(item["value"])

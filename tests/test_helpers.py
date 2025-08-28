@@ -465,10 +465,10 @@ class TestJob(unittest.TestCase):
         """Test that Job.to_api() and Job.from_api() produce equivalent objects."""
         # Create real pint quantities for testing
         operating_point = {"speed": 1000 * Q.rpm, "torque": 50 * Q.N * Q.m}
-        simulation = {"timestep_intervals": 100 * Q.count}
-        stator = {"slot_liner_thickness": 0.125 * Q.mm}
-        rotor = {"slot_liner_thickness": 0.125 * Q.mm}
-        winding = {"slot_liner_thickness": 0.125 * Q.mm}
+        simulation = {"these": 1 * Q.count}
+        stator = {"all": 2.0 * Q.mm}
+        rotor = {"are": 3.0 * Q.feet}
+        winding = {"different": 4.0 * Q.furlong}
         materials = {
             "rotor_lamination": "test_material_1",
             "stator_slot_winding": "test_material_2",
@@ -508,12 +508,31 @@ class TestJob(unittest.TestCase):
 
         # Compare simulation quantities
         for key in original_job.simulation:
-            self.assertEqual(new_job.simulation[key], original_job.simulation[key])
+            self.assertEqual(
+                new_job.simulation[key].to_base_units(),
+                original_job.simulation[key].to_base_units(),
+            )
 
         # Compare machine components
-        self.assertEqual(new_job.machine.stator, original_job.machine.stator)
-        self.assertEqual(new_job.machine.rotor, original_job.machine.rotor)
-        self.assertEqual(new_job.machine.winding, original_job.machine.winding)
+        for key, value in original_job.machine.stator.items():
+            self.assertIn(key, new_job.machine.stator)
+            self.assertEqual(
+                new_job.machine.stator[key].to_base_units(),
+                value.to_base_units(),
+            )
+        for key, value in original_job.machine.rotor.items():
+            self.assertIn(key, new_job.machine.rotor)
+            self.assertEqual(
+                new_job.machine.rotor[key].to_base_units(),
+                value.to_base_units(),
+            )
+        for key, value in original_job.machine.winding.items():
+            self.assertIn(key, new_job.machine.winding)
+            self.assertEqual(
+                new_job.machine.winding[key].to_base_units(),
+                value.to_base_units(),
+            )
+
         self.assertEqual(new_job.machine.materials, original_job.machine.materials)
 
 
