@@ -343,7 +343,6 @@ class ProgressListener(StompListener):
     def __init__(self, job, uid):
         self.job_id = job.id
         self.uid = uid
-        self.done = False
         self._callback_fn = None  # Initialize the callback function
 
     @property
@@ -358,18 +357,22 @@ class ProgressListener(StompListener):
         headers = {key.decode(): value.decode() for key, value in frame.header}
         if headers["subscription"] == self.uid:
             try:
+                destination = headers.get("destination", "")
+                # e.g. /topic/some-uuid.solver.something.progress
+                parts = destination.split(".")
+                worker_name = "unknown"
+                if len(parts) > 1 and parts[0] == f"/topic/{self.job_id}":
+                    worker_name = parts[1]
+
                 time_str, level_str, mesg_str = frame.message.decode().split(" - ")
-            except ValueError:
-                logger.warning("Unable to process", frame)
+            except (ValueError, IndexError):
+                logger.warning("Unable to process progress message: %s", frame.message)
             else:
                 data = json.loads(mesg_str.strip())
-                if "done" in data:
-                    self.callback_fn(data["done"], tsize=data["total"])
-                    if data["done"] == data["total"]:
-                        self.done = True
-                        return self.done
-        else:
-            return
+                if "done" in data and self._callback_fn:
+                    self._callback_fn(
+                        data["done"], tsize=data["total"], worker=worker_name
+                    )
 
 
 async def async_job_monitor(api, my_job, connection, position):
@@ -397,17 +400,42 @@ async def async_job_monitor(api, my_job, connection, position):
     uid = str(uuid.uuid4())
     listener = ProgressListener(my_job, uid)
     connection.add_listener(listener)
-    connection.subscribe(destination=f"/topic/{my_job.id}.solver.*.progress", id=uid)
+    connection.subscribe(destination=f"/topic/{my_job.id}.*.*.progress", id=uid)
     with TqdmUpTo(
-        total=my_job.simulation["timestep_intervals"],
+        total=100,  # Default total, will be updated by the first progress message
         desc=f"Job {my_job.title}",
         position=position,
         leave=False,
     ) as pbar:
-        listener.callback_fn = pbar.update_to
+        current_worker = [None]
+
+        def progress_callback(b, bsize=1, tsize=None, worker=None):
+            if worker and worker != current_worker[0]:
+                current_worker[0] = worker
+                pbar.desc = f"Job {my_job.title} [{worker}]"
+                pbar.n = 0  # reset progress
+                pbar.refresh()  # show the reset bar
+
+            pbar.update_to(b, bsize, tsize)
+
+        listener.callback_fn = progress_callback
 
         j1_result = api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
 
-        while not listener.done:
+        job_status = JOB_STATUS["QueuedForMeshing"]
+        while job_status < JOB_STATUS["Complete"]:
             await asyncio.sleep(1)  # sleep for a second
-        return STATUS_JOB[api.get_job(my_job.id)["status"]]
+            try:
+                job = api.get_job(my_job.id)
+                job_status = job["status"]
+                if job_status >= JOB_STATUS["Quarantined"]:
+                    # Quarantined or other terminal state
+                    break
+            except Exception as e:
+                logger.warning(
+                    f"Could not get job status for {my_job.id}, will keep trying: {e}"
+                )
+
+        # Fetch final status to return
+        final_job_state = api.get_job(my_job.id)
+        return STATUS_JOB[final_job_state["status"]]
