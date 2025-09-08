@@ -364,45 +364,41 @@ class ProgressListener(StompListener):
                 if len(parts) > 1 and parts[0] == f"/topic/{self.job_id}":
                     worker_name = parts[1]
 
-                time_str, level_str, mesg_str = frame.message.decode().split(" - ")
-            except (ValueError, IndexError):
+                raw = frame.message.decode()
+
+                # Support two formats:
+                # 1) "<time> - <LEVEL> - <json>" (existing)
+                # 2) "<json>" where json contains {"job_id": "...", "status": 70}
+                if " - " in raw:
+                    # protect against unexpected splits: only split into 3 parts
+                    time_str, level_str, mesg_str = raw.split(" - ", 2)
+                    data = json.loads(mesg_str.strip())
+                else:
+                    data = json.loads(raw.strip())
+            except (ValueError, IndexError, json.JSONDecodeError):
                 logger.warning("Unable to process progress message: %s", frame.message)
             else:
-                data = json.loads(mesg_str.strip())
+                # Old-style progress payloads use 'done' / 'total'
                 if "done" in data and self._callback_fn:
                     self._callback_fn(
-                        data["done"], tsize=data["total"], worker=worker_name
+                        data["done"], tsize=data.get("total"), worker=worker_name
                     )
+                # New server-side progress messages may publish status codes
+                elif "status" in data and self._callback_fn:
+                    # forward status number to callback; caller can treat >= Complete as terminal
+                    self._callback_fn(data["status"], tsize=None, worker=worker_name)
 
 
 async def async_job_monitor(api, my_job, connection, position):
-    """
-    Monitor the progress of a job and update the progress bar
-
-    Parameters
-    ----------
-    api : ltc_client.api.API
-        The API object
-    my_job : ltc_client.helpers.Job
-        The job object
-    connection : webstompy.StompConnection
-        The connection object
-    position : int
-        The position of the progress bar
-
-    Returns
-    -------
-    int
-        The status of the job
-
-
-    """
-    uid = str(uuid.uuid4())
+    uid = str(uuid4())
     listener = ProgressListener(my_job, uid)
     connection.add_listener(listener)
     connection.subscribe(destination=f"/topic/{my_job.id}.*.*.progress", id=uid)
+
+    done_event = asyncio.Event()
+
     with TqdmUpTo(
-        total=100,  # Default total, will be updated by the first progress message
+        total=100,
         desc=f"Job {my_job.title}",
         position=position,
         leave=False,
@@ -410,32 +406,51 @@ async def async_job_monitor(api, my_job, connection, position):
         current_worker = [None]
 
         def progress_callback(b, bsize=1, tsize=None, worker=None):
+            # If the listener forwarded a numeric status (server message), treat accordingly
+            try:
+                # numeric status: compare with JOB_STATUS["Complete"]
+                if isinstance(b, int) and b >= JOB_STATUS["Complete"]:
+                    done_event.set()
+                    return
+            except Exception:
+                pass
+
+            # existing behaviour for done/total progress
             if worker and worker != current_worker[0]:
                 current_worker[0] = worker
                 pbar.desc = f"Job {my_job.title} [{worker}]"
-                pbar.n = 0  # reset progress
-                pbar.refresh()  # show the reset bar
+                pbar.n = 0
+                pbar.refresh()
 
             pbar.update_to(b, bsize, tsize)
 
+            # if we've reached the reported total, mark done
+            if tsize is not None and b >= tsize:
+                done_event.set()
+
         listener.callback_fn = progress_callback
 
-        j1_result = api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
+        # kick off initial status update
+        api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
 
-        job_status = JOB_STATUS["QueuedForMeshing"]
-        while job_status < JOB_STATUS["Complete"]:
-            await asyncio.sleep(1)  # sleep for a second
-            try:
-                job = api.get_job(my_job.id)
-                job_status = job["status"]
-                if job_status >= JOB_STATUS["Quarantined"]:
-                    # Quarantined or other terminal state
-                    break
-            except Exception as e:
-                logger.warning(
-                    f"Could not get job status for {my_job.id}, will keep trying: {e}"
-                )
+        # wait for server push or fallback to polling with timeout
+        try:
+            await asyncio.wait_for(done_event.wait(), timeout=300)
+        except asyncio.TimeoutError:
+            # fallback polling if no progress pushed
+            job_status = JOB_STATUS["QueuedForMeshing"]
+            while job_status < JOB_STATUS["Complete"]:
+                await asyncio.sleep(5)
+                try:
+                    job = api.get_job(my_job.id)
+                    job_status = job["status"]
+                    if job_status >= JOB_STATUS["Quarantined"]:
+                        break
+                except Exception as e:
+                    logger.warning(
+                        f"Could not get job status for {my_job.id}, will keep trying: {e}"
+                    )
 
-        # Fetch final status to return
-        final_job_state = api.get_job(my_job.id)
-        return STATUS_JOB[final_job_state["status"]]
+    # final job status
+    final_job_state = api.get_job(my_job.id)
+    return STATUS_JOB[final_job_state["status"]]
