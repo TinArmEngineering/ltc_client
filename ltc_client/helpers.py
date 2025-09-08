@@ -355,38 +355,73 @@ class ProgressListener(StompListener):
 
     def on_message(self, frame):
         headers = {key.decode(): value.decode() for key, value in frame.header}
-        if headers["subscription"] == self.uid:
-            try:
-                destination = headers.get("destination", "")
-                # e.g. /topic/some-uuid.solver.something.progress
-                parts = destination.split(".")
-                worker_name = "unknown"
-                if len(parts) > 1 and parts[0] == f"/topic/{self.job_id}":
-                    worker_name = parts[1]
+        if headers.get("subscription") != self.uid:
+            return
 
-                raw = frame.message.decode()
+        try:
+            destination = headers.get("destination", "")
+            parts = destination.split(".")
+            worker_name = "unknown"
+            if len(parts) > 1 and parts[0] == f"/topic/{self.job_id}":
+                worker_name = parts[1]
 
-                # Support two formats:
-                # 1) "<time> - <LEVEL> - <json>" (existing)
-                # 2) "<json>" where json contains {"job_id": "...", "status": 70}
-                if " - " in raw:
-                    # protect against unexpected splits: only split into 3 parts
-                    time_str, level_str, mesg_str = raw.split(" - ", 2)
-                    data = json.loads(mesg_str.strip())
-                else:
-                    data = json.loads(raw.strip())
-            except (ValueError, IndexError, json.JSONDecodeError):
-                logger.warning("Unable to process progress message: %s", frame.message)
+            raw = (
+                frame.message.decode()
+                if isinstance(frame.message, (bytes, bytearray))
+                else str(frame.message)
+            )
+
+            # Support two formats:
+            # 1) "<time> - <LEVEL> - <json>"
+            # 2) "<json>"
+            if " - " in raw:
+                # split into at most 3 parts to avoid accidental extra splits
+                _, _level_str, mesg_str = raw.split(" - ", 2)
+                payload = mesg_str.strip()
             else:
-                # Old-style progress payloads use 'done' / 'total'
-                if "done" in data and self._callback_fn:
-                    self._callback_fn(
-                        data["done"], tsize=data.get("total"), worker=worker_name
+                payload = raw.strip()
+
+            # Expect valid JSON payload — try to parse and fail if not JSON
+            data = json.loads(payload)
+        except (ValueError, IndexError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "Unable to process progress message: %s (%s)",
+                getattr(frame, "message", frame),
+                exc,
+            )
+            return
+
+        # forward to callback if present
+        if not self._callback_fn:
+            return
+
+        # Old-style progress payloads use 'done' / 'total'
+        if isinstance(data, dict):
+            if "done" in data:
+                self._callback_fn(
+                    data["done"], tsize=data.get("total"), worker=worker_name
+                )
+                return
+            # Server-side status codes
+            if "status" in data:
+                try:
+                    status_val = int(data["status"])
+                except Exception:
+                    status_val = data["status"]
+                self._callback_fn(status_val, tsize=None, worker=worker_name)
+                return
+            # remaining percent style
+            if "remaining" in data and "unit" in data:
+                try:
+                    remaining = float(data.get("remaining") or 0.0)
+                    done = max(0, min(100, int(round(100.0 - remaining))))
+                    self._callback_fn(done, tsize=100, worker=worker_name)
+                except Exception:
+                    logger.debug(
+                        "Could not interpret remaining percent: %s",
+                        data.get("remaining"),
                     )
-                # New server-side progress messages may publish status codes
-                elif "status" in data and self._callback_fn:
-                    # forward status number to callback; caller can treat >= Complete as terminal
-                    self._callback_fn(data["status"], tsize=None, worker=worker_name)
+                    return
 
 
 async def async_job_monitor(api, my_job, connection, position):
