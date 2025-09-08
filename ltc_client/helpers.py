@@ -11,13 +11,14 @@ import uuid
 import asyncio
 import json
 from uuid import uuid4
+from typing import Any, Tuple
 
 logger = logging.getLogger(__name__)
 
 q = pint.get_application_registry()
 
 
-def decode(enc):
+def decode(enc: dict) -> "pint.Quantity":
     """Decode a quantity encoded object
 
     Parameters
@@ -27,37 +28,36 @@ def decode(enc):
 
     Returns
     -------
-    Quantity
+    pint.Quantity
         The decoded quantity object
-
     """
+
+    units_tuple: Tuple[Tuple[str, int], ...] = tuple(
+        (e["name"], e["exponent"]) for e in enc.get("units", ())
+    )
+
+    # magnitude can be a single value or an array represented as a list
     if len(enc["magnitude"]) != 1:
-        enc_tuple = tuple(
-            (
-                np.array(enc["magnitude"], dtype=np.float64).reshape(enc["shape"]),
-                tuple((e["name"], e["exponent"]) for e in enc.get("units", ())),
-            )
+        enc_tuple: Tuple[Any, Tuple[Tuple[str, int], ...]] = (
+            np.array(enc["magnitude"], dtype=np.float64).reshape(enc["shape"]),
+            units_tuple,
         )
     else:
-        enc_tuple = (
-            enc["magnitude"][0],
-            tuple((e["name"], e["exponent"]) for e in enc.get("units", ())),
-        )
+        enc_tuple = (enc["magnitude"][0], units_tuple)
+
     try:
-        quant = q.Quantity.from_tuple(enc_tuple)
+        quant: "pint.Quantity" = q.Quantity.from_tuple(enc_tuple)
         quant.ito_base_units()
-    except:
+    except Exception as exc:
         logger.error(
-            "Error decoding {0}".format(
-                (
-                    enc["magnitude"],
-                    ((e["name"], e["exponent"]) for e in enc.get("units", ())),
-                )
-            )
+            "Error decoding %s with units %s: %s",
+            enc.get("magnitude"),
+            enc.get("units"),
+            exc,
         )
         raise
 
-    logger.debug("convert {i} -> {o:~P}".format(o=quant, i=enc))
+    logger.debug("convert %s -> %s", enc, quant)
     return quant
 
 
