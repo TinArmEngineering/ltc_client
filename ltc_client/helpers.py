@@ -439,17 +439,35 @@ class ProgressListener(StompListener):
             if "remaining" in data and "unit" in data:
                 try:
                     remaining = float(data.get("remaining") or 0.0)
-                    done = max(0, min(100, int(round(100.0 - remaining))))
-                    logger.info(
-                        f"Remaining style update: remaining={remaining}, done={done}"
-                    )
-                    self._callback_fn(
-                        done, tsize=100, worker=worker_name, message_type="remaining"
-                    )  # Add message type flag
-                except Exception:
+                    unit = data.get("unit", "")
+
+                    if unit == "seconds" or unit == "second":
+                        # Just update the description to show time remaining, don't use for progress
+                        logger.info(f"Time remaining update: {remaining} {unit}")
+                        self._callback_fn(
+                            None,
+                            tsize=None,
+                            worker=worker_name,
+                            message_type="time_remaining",
+                            remaining_time=f"{remaining:.1f} {unit}",
+                        )
+                    else:
+                        # Handle as percentage if unit is not time-based
+                        done = max(0, min(100, int(round(100.0 - remaining))))
+                        logger.info(
+                            f"Remaining percent update: remaining={remaining}, done={done}"
+                        )
+                        self._callback_fn(
+                            done,
+                            tsize=100,
+                            worker=worker_name,
+                            message_type="remaining",
+                        )
+                except Exception as e:
                     logger.debug(
-                        "Could not interpret remaining percent: %s",
+                        "Could not interpret remaining value: %s (%s)",
                         data.get("remaining"),
+                        e,
                     )
                     return
 
@@ -470,7 +488,9 @@ async def async_job_monitor(api, my_job, connection, position):
     ) as pbar:
         current_worker = [None]
 
-        def progress_callback(b, bsize=1, tsize=None, worker=None, message_type=None):
+        def progress_callback(
+            b, bsize=1, tsize=None, worker=None, message_type=None, remaining_time=None
+        ):
             # Only check status messages for job completion
             if message_type == "status":
                 try:
@@ -492,19 +512,34 @@ async def async_job_monitor(api, my_job, connection, position):
                     logger.warning(f"Could not interpret job status {b}: {e}")
                     pass
 
-            # Handle progress updates for the progress bar
+            # Handle worker changes
             if worker and worker != current_worker[0]:
                 current_worker[0] = worker
                 pbar.desc = f"Job {my_job.title} [{worker}]"
-                pbar.n = 0
+                if (
+                    message_type != "time_remaining"
+                ):  # Don't reset progress for time updates
+                    pbar.n = 0
                 pbar.refresh()
 
+            # Handle time remaining message type
+            if message_type == "time_remaining" and remaining_time:
+                pbar.desc = (
+                    f"Job {my_job.title} [{worker}] - {remaining_time} remaining"
+                )
+                pbar.refresh()
+                return
+
+            # Skip progress bar updates for None values
+            if b is None:
+                return
+
+            # Update progress bar for regular progress updates
             pbar.update_to(b, bsize, tsize)
 
-            # For progress messages, only set done if we've reached the total
+            # For progress messages, check if we've reached total and log it
             if message_type == "progress" and tsize is not None and b >= tsize:
                 logger.info(f"Progress reached total: b={b}, tsize={tsize}")
-                # Don't set done_event here - let the status messages do that
 
         listener.callback_fn = progress_callback
 
@@ -546,4 +581,9 @@ async def async_job_monitor(api, my_job, connection, position):
     logger.info(
         f"Final job status: {final_job_state['status']} ({STATUS_JOB[final_job_state['status']]})"
     )
+    # Force set done_event to ensure we don't hang
+    if not done_event.is_set():
+        logger.info("Forcing done_event to be set at end of job monitor")
+        done_event.set()
+
     return STATUS_JOB[final_job_state["status"]]
