@@ -447,7 +447,8 @@ async def async_job_monitor(api, my_job, connection, position):
                 if isinstance(b, int) and b >= JOB_STATUS["Complete"]:
                     done_event.set()
                     return
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Could not interpret job status {b}: {e}")
                 pass
 
             # existing behaviour for done/total progress
