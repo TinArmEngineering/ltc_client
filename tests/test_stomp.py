@@ -22,8 +22,14 @@ def test_progress_listener_parses_time_prefixed_json():
 
     called = {}
 
-    def cb(done, tsize=None, worker=None):
-        called["args"] = (done, tsize, worker)
+    def cb(
+        done, tsize=None, worker=None, message_type=None
+    ):  # Add message_type parameter
+        called["args"] = (
+            done,
+            tsize,
+            worker,
+        )  # Keep original tuple format for assertion
 
     pl.callback_fn = cb
 
@@ -130,8 +136,14 @@ def test_listener_accepts_frame_when_subscription_missing():
 
     called = {}
 
-    def cb(done, tsize=None, worker=None):
-        called["args"] = (done, tsize, worker)
+    def cb(
+        done, tsize=None, worker=None, message_type=None
+    ):  # Add message_type parameter
+        called["args"] = (
+            done,
+            tsize,
+            worker,
+        )  # Keep original tuple format for assertion
 
     pl.callback_fn = cb
 
