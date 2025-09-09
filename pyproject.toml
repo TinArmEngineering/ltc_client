@@ -42,6 +42,7 @@ version = "0.0.0"
 black = "^24.4.2"
 pytest = "^8.3.3"
 coverage = "^7.6.1"
+pytest-asyncio = "^0.21.0"
 
 [tool.poetry.group.test.dependencies]
 mock = "^5.1.0"

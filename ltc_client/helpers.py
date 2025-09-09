@@ -355,7 +355,17 @@ class ProgressListener(StompListener):
 
     def on_message(self, frame):
         headers = {key.decode(): value.decode() for key, value in frame.header}
-        if headers.get("subscription") != self.uid:
+        sub_hdr = headers.get("subscription")
+        dest_hdr = headers.get("destination", "")
+        # accept if subscription matches OR destination is for our job topic (some brokers don't preserve subscription)
+        if sub_hdr != self.uid and not dest_hdr.startswith(f"/topic/{self.job_id}"):
+            logger.debug(
+                "Ignoring frame: subscription=%r uid=%r destination=%r payload=%r",
+                sub_hdr,
+                self.uid,
+                dest_hdr,
+                getattr(frame, "message", None),
+            )
             return
 
         try:
@@ -381,8 +391,11 @@ class ProgressListener(StompListener):
             else:
                 payload = raw.strip()
 
+            # Log the raw message
+            logger.info(f"Received message from {worker_name}: {payload}")
             # Expect valid JSON payload — try to parse and fail if not JSON
             data = json.loads(payload)
+            logger.info(f"Parsed message data: {data}")
         except (ValueError, IndexError, json.JSONDecodeError) as exc:
             logger.warning(
                 "Unable to process progress message: %s (%s)",
@@ -406,8 +419,12 @@ class ProgressListener(StompListener):
             if "status" in data:
                 try:
                     status_val = int(data["status"])
+                    logger.info(
+                        f"Status message received: {status_val}, Complete threshold: {JOB_STATUS['Complete']}"
+                    )
                 except Exception:
                     status_val = data["status"]
+                    logger.info(f"Non-integer status received: {status_val}")
                 self._callback_fn(status_val, tsize=None, worker=worker_name)
                 return
             # remaining percent style
@@ -415,9 +432,12 @@ class ProgressListener(StompListener):
                 try:
                     remaining = float(data.get("remaining") or 0.0)
                     done = max(0, min(100, int(round(100.0 - remaining))))
+                    logger.info(
+                        f"Remaining style update: remaining={remaining}, done={done}"
+                    )
                     self._callback_fn(done, tsize=100, worker=worker_name)
                 except Exception:
-                    logger.debug(
+                    logger.info(
                         "Could not interpret remaining percent: %s",
                         data.get("remaining"),
                     )
@@ -444,9 +464,20 @@ async def async_job_monitor(api, my_job, connection, position):
             # If the listener forwarded a numeric status (server message), treat accordingly
             try:
                 # numeric status: compare with JOB_STATUS["Complete"]
-                if isinstance(b, int) and b >= JOB_STATUS["Complete"]:
-                    done_event.set()
-                    return
+                if isinstance(b, int):
+                    logger.info(
+                        f"Checking job status: received={b}, Complete threshold={JOB_STATUS['Complete']}"
+                    )
+                    if b >= JOB_STATUS["Complete"]:
+                        logger.info(
+                            f"Job complete condition met: status={b} >= {JOB_STATUS['Complete']}"
+                        )
+                        done_event.set()
+                        return
+                    else:
+                        logger.info(
+                            f"Job not yet complete: status={b} < {JOB_STATUS['Complete']}"
+                        )
             except Exception as e:
                 logger.warning(f"Could not interpret job status {b}: {e}")
                 pass
@@ -462,25 +493,40 @@ async def async_job_monitor(api, my_job, connection, position):
 
             # if we've reached the reported total, mark done
             if tsize is not None and b >= tsize:
+                logger.info(
+                    f"Progress reached total: b={b}, tsize={tsize}, setting done_event"
+                )
                 done_event.set()
 
         listener.callback_fn = progress_callback
 
         # kick off initial status update
+        logger.info(
+            f"Starting job monitor for job {my_job.id} with initial status: {JOB_STATUS['QueuedForMeshing']}"
+        )
         api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
 
         # wait for server push or fallback to polling with timeout
         try:
+            logger.info(f"Waiting for done_event with 300s timeout")
             await asyncio.wait_for(done_event.wait(), timeout=300)
+            logger.info(f"done_event was set, job monitor exiting wait")
         except asyncio.TimeoutError:
             # fallback polling if no progress pushed
+            logger.info(
+                f"Timeout waiting for job completion event, falling back to polling"
+            )
             job_status = JOB_STATUS["QueuedForMeshing"]
             while job_status < JOB_STATUS["Complete"]:
                 await asyncio.sleep(5)
                 try:
                     job = api.get_job(my_job.id)
                     job_status = job["status"]
+                    logger.info(
+                        f"Polled job status: {job_status} (Complete threshold: {JOB_STATUS['Complete']})"
+                    )
                     if job_status >= JOB_STATUS["Quarantined"]:
+                        logger.info(f"Job quarantined with status: {job_status}")
                         break
                 except Exception as e:
                     logger.warning(
@@ -489,4 +535,7 @@ async def async_job_monitor(api, my_job, connection, position):
 
     # final job status
     final_job_state = api.get_job(my_job.id)
+    logger.info(
+        f"Final job status: {final_job_state['status']} ({STATUS_JOB[final_job_state['status']]})"
+    )
     return STATUS_JOB[final_job_state["status"]]
