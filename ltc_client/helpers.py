@@ -411,8 +411,14 @@ class ProgressListener(StompListener):
         # TODO specify progress messages in a scheme. some progress payloads use 'done' / 'total'
         if isinstance(data, dict):
             if "done" in data:
+                logger.info(
+                    f"Progress update: done={data['done']}, total={data.get('total')}"
+                )
                 self._callback_fn(
-                    data["done"], tsize=data.get("total"), worker=worker_name
+                    data["done"],
+                    tsize=data.get("total"),
+                    worker=worker_name,
+                    message_type="progress",  # Add message type flag
                 )
                 return
             # Server-side status codes
@@ -425,7 +431,9 @@ class ProgressListener(StompListener):
                 except Exception:
                     status_val = data["status"]
                     logger.info(f"Non-integer status received: {status_val}")
-                self._callback_fn(status_val, tsize=None, worker=worker_name)
+                self._callback_fn(
+                    status_val, tsize=None, worker=worker_name, message_type="status"
+                )  # Add message type flag
                 return
             # remaining percent style
             if "remaining" in data and "unit" in data:
@@ -435,9 +443,11 @@ class ProgressListener(StompListener):
                     logger.info(
                         f"Remaining style update: remaining={remaining}, done={done}"
                     )
-                    self._callback_fn(done, tsize=100, worker=worker_name)
+                    self._callback_fn(
+                        done, tsize=100, worker=worker_name, message_type="remaining"
+                    )  # Add message type flag
                 except Exception:
-                    logger.info(
+                    logger.debug(
                         "Could not interpret remaining percent: %s",
                         data.get("remaining"),
                     )
@@ -460,15 +470,15 @@ async def async_job_monitor(api, my_job, connection, position):
     ) as pbar:
         current_worker = [None]
 
-        def progress_callback(b, bsize=1, tsize=None, worker=None):
-            # If the listener forwarded a numeric status (server message), treat accordingly
-            try:
-                # numeric status: compare with JOB_STATUS["Complete"]
-                if isinstance(b, int):
+        def progress_callback(b, bsize=1, tsize=None, worker=None, message_type=None):
+            # Only check status messages for job completion
+            if message_type == "status":
+                try:
+                    # Only treat actual status messages as completion criteria
                     logger.info(
                         f"Checking job status: received={b}, Complete threshold={JOB_STATUS['Complete']}"
                     )
-                    if b >= JOB_STATUS["Complete"]:
+                    if isinstance(b, int) and b >= JOB_STATUS["Complete"]:
                         logger.info(
                             f"Job complete condition met: status={b} >= {JOB_STATUS['Complete']}"
                         )
@@ -478,11 +488,11 @@ async def async_job_monitor(api, my_job, connection, position):
                         logger.info(
                             f"Job not yet complete: status={b} < {JOB_STATUS['Complete']}"
                         )
-            except Exception as e:
-                logger.warning(f"Could not interpret job status {b}: {e}")
-                pass
+                except Exception as e:
+                    logger.warning(f"Could not interpret job status {b}: {e}")
+                    pass
 
-            # existing behaviour for done/total progress
+            # Handle progress updates for the progress bar
             if worker and worker != current_worker[0]:
                 current_worker[0] = worker
                 pbar.desc = f"Job {my_job.title} [{worker}]"
@@ -491,12 +501,10 @@ async def async_job_monitor(api, my_job, connection, position):
 
             pbar.update_to(b, bsize, tsize)
 
-            # if we've reached the reported total, mark done
-            if tsize is not None and b >= tsize:
-                logger.info(
-                    f"Progress reached total: b={b}, tsize={tsize}, setting done_event"
-                )
-                done_event.set()
+            # For progress messages, only set done if we've reached the total
+            if message_type == "progress" and tsize is not None and b >= tsize:
+                logger.info(f"Progress reached total: b={b}, tsize={tsize}")
+                # Don't set done_event here - let the status messages do that
 
         listener.callback_fn = progress_callback
 
