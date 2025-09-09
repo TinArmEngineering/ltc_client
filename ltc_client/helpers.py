@@ -395,7 +395,7 @@ class ProgressListener(StompListener):
         if not self._callback_fn:
             return
 
-        # Old-style progress payloads use 'done' / 'total'
+        # TODO specify progress messages in a scheme. some progress payloads use 'done' / 'total'
         if isinstance(data, dict):
             if "done" in data:
                 self._callback_fn(
