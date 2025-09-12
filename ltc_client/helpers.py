@@ -392,10 +392,10 @@ class ProgressListener(StompListener):
                 payload = raw.strip()
 
             # Log the raw message
-            logger.info(f"Received message from {worker_name}: {payload}")
+            logger.debug(f"Received message from {worker_name}: {payload}")
             # Expect valid JSON payload — try to parse and fail if not JSON
             data = json.loads(payload)
-            logger.info(f"Parsed message data: {data}")
+            logger.debug(f"Parsed message data: {data}")
         except (ValueError, IndexError, json.JSONDecodeError) as exc:
             logger.warning(
                 "Unable to process progress message: %s (%s)",
@@ -411,7 +411,7 @@ class ProgressListener(StompListener):
         # TODO specify progress messages in a scheme. some progress payloads use 'done' / 'total'
         if isinstance(data, dict):
             if "done" in data:
-                logger.info(
+                logger.debug(
                     f"Progress update: done={data['done']}, total={data.get('total')}"
                 )
                 self._callback_fn(
@@ -425,12 +425,12 @@ class ProgressListener(StompListener):
             if "status" in data:
                 try:
                     status_val = int(data["status"])
-                    logger.info(
+                    logger.debug(
                         f"Status message received: {status_val}, Complete threshold: {JOB_STATUS['Complete']}"
                     )
                 except Exception:
                     status_val = data["status"]
-                    logger.info(f"Non-integer status received: {status_val}")
+                    logger.warning(f"Non-integer status received: {status_val}")
                 self._callback_fn(
                     status_val, tsize=None, worker=worker_name, message_type="status"
                 )  # Add message type flag
@@ -443,7 +443,7 @@ class ProgressListener(StompListener):
 
                     if unit == "seconds" or unit == "second":
                         # Just update the description to show time remaining, don't use for progress
-                        logger.info(f"Time remaining update: {remaining} {unit}")
+                        logger.debug(f"Time remaining update: {remaining} {unit}")
                         self._callback_fn(
                             None,
                             tsize=None,
@@ -454,7 +454,7 @@ class ProgressListener(StompListener):
                     else:
                         # Handle as percentage if unit is not time-based
                         done = max(0, min(100, int(round(100.0 - remaining))))
-                        logger.info(
+                        logger.debug(
                             f"Remaining percent update: remaining={remaining}, done={done}"
                         )
                         self._callback_fn(
@@ -495,17 +495,17 @@ async def async_job_monitor(api, my_job, connection, position):
             if message_type == "status":
                 try:
                     # Only treat actual status messages as completion criteria
-                    logger.info(
+                    logger.debug(
                         f"Checking job status: received={b}, Complete threshold={JOB_STATUS['Complete']}"
                     )
                     if isinstance(b, int) and b >= JOB_STATUS["Complete"]:
-                        logger.info(
+                        logger.debug(
                             f"Job complete condition met: status={b} >= {JOB_STATUS['Complete']}"
                         )
                         done_event.set()
                         return
                     else:
-                        logger.info(
+                        logger.debug(
                             f"Job not yet complete: status={b} < {JOB_STATUS['Complete']}"
                         )
                 except Exception as e:
@@ -539,24 +539,24 @@ async def async_job_monitor(api, my_job, connection, position):
 
             # For progress messages, check if we've reached total and log it
             if message_type == "progress" and tsize is not None and b >= tsize:
-                logger.info(f"Progress reached total: b={b}, tsize={tsize}")
+                logger.debug(f"Progress reached total: b={b}, tsize={tsize}")
 
         listener.callback_fn = progress_callback
 
         # kick off initial status update
-        logger.info(
+        logger.debug(
             f"Starting job monitor for job {my_job.id} with initial status: {JOB_STATUS['QueuedForMeshing']}"
         )
         api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
 
         # wait for server push or fallback to polling with timeout
         try:
-            logger.info(f"Waiting for done_event with 300s timeout")
+            logger.debug(f"Waiting for done_event with 300s timeout")
             await asyncio.wait_for(done_event.wait(), timeout=300)
-            logger.info(f"done_event was set, job monitor exiting wait")
+            logger.debug(f"done_event was set, job monitor exiting wait")
         except asyncio.TimeoutError:
             # fallback polling if no progress pushed
-            logger.info(
+            logger.debug(
                 f"Timeout waiting for job completion event, falling back to polling"
             )
             job_status = JOB_STATUS["QueuedForMeshing"]
@@ -565,11 +565,11 @@ async def async_job_monitor(api, my_job, connection, position):
                 try:
                     job = api.get_job(my_job.id)
                     job_status = job["status"]
-                    logger.info(
+                    logger.debug(
                         f"Polled job status: {job_status} (Complete threshold: {JOB_STATUS['Complete']})"
                     )
                     if job_status >= JOB_STATUS["Quarantined"]:
-                        logger.info(f"Job quarantined with status: {job_status}")
+                        logger.error(f"Job quarantined with status: {job_status}")
                         break
                 except Exception as e:
                     logger.warning(
@@ -578,12 +578,12 @@ async def async_job_monitor(api, my_job, connection, position):
 
     # final job status
     final_job_state = api.get_job(my_job.id)
-    logger.info(
+    logger.debug(
         f"Final job status: {final_job_state['status']} ({STATUS_JOB[final_job_state['status']]})"
     )
     # Force set done_event to ensure we don't hang
     if not done_event.is_set():
-        logger.info("Forcing done_event to be set at end of job monitor")
+        logger.debug("Forcing done_event to be set at end of job monitor")
         done_event.set()
 
     return STATUS_JOB[final_job_state["status"]]
