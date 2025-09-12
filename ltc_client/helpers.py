@@ -12,7 +12,7 @@ import uuid
 import asyncio
 import json
 from uuid import uuid4
-from typing import Any, Tuple
+from typing import Any, Tuple, List, Dict, Callable
 
 
 logger = logging.getLogger(__name__)
@@ -371,3 +371,129 @@ try:
 except Exception:
     logger.exception("Deferred import of Material/Job failed")
     raise
+
+
+class JobBatchProgressListener(StompListener):
+    """A STOMP listener that handles progress messages for a batch of jobs."""
+
+    def __init__(self, job_ids: List[str], callback: Callable):
+        self.job_ids = set(job_ids)
+        self._callback = callback
+        self.uid = str(uuid4())
+
+    def on_message(self, frame):
+        logger.debug("JobBatchProgressListener.on_message START frame=%r", frame)
+        try:
+            headers = {key.decode(): value.decode() for key, value in frame.header}
+            dest_hdr = headers.get("destination", "")
+
+            # Extract job_id from destination topic: /topic/{job_id}.*
+            try:
+                parts = dest_hdr.split("/")
+                if len(parts) < 3 or parts[1] != "topic":
+                    return
+                job_id = parts[2].split(".")[0]
+            except IndexError:
+                logger.debug("Could not parse job_id from destination: %s", dest_hdr)
+                return
+
+            if job_id not in self.job_ids:
+                logger.debug("Ignoring message for untracked job_id: %s", job_id)
+                return
+
+            # The rest of the message parsing is similar to ProgressListener
+            try:
+                raw = (
+                    frame.message.decode()
+                    if isinstance(frame.message, (bytes, bytearray))
+                    else str(frame.message)
+                )
+                if " - " in raw:
+                    _, _, mesg_str = raw.split(" - ", 2)
+                    payload = mesg_str.strip()
+                else:
+                    payload = raw.strip()
+
+                data = json.loads(payload)
+            except (ValueError, IndexError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "Unable to process progress message: %s (%s)",
+                    getattr(frame, "message", frame),
+                    exc,
+                )
+                return
+
+            # Forward job_id and parsed data to the callback
+            self._callback(job_id, data)
+
+        except Exception:
+            logger.exception("JobBatchProgressListener failed handling frame=%r", frame)
+        finally:
+            logger.debug("JobBatchProgressListener.on_message END frame=%r", frame)
+
+
+async def monitor_jobs(api: "Api", jobs: List["Job"], connection, auto_start=True):
+    """
+    Monitors a batch of jobs asynchronously with a single progress bar.
+    """
+    job_ids = [job.id for job in jobs]
+    job_status_events: Dict[str, asyncio.Event] = {
+        job_id: asyncio.Event() for job_id in job_ids
+    }
+    loop = asyncio.get_running_loop()
+
+    def _on_message(job_id: str, data: dict):
+        if "status" in data:
+            try:
+                status_val = int(data["status"])
+                if status_val >= JOB_STATUS["Complete"]:
+                    # Use call_soon_threadsafe as this is called from listener thread
+                    loop.call_soon_threadsafe(job_status_events[job_id].set)
+            except (ValueError, KeyError):
+                pass
+
+    listener = JobBatchProgressListener(job_ids, _on_message)
+    connection.add_listener(listener)
+    # Subscribe to all messages for the jobs in the batch
+    connection.subscribe(destination="/topic/+", id=listener.uid)
+
+    if auto_start:
+        # Start all jobs
+        start_tasks = [
+            api.update_job_status(job_id, JOB_STATUS["QueuedForMeshing"])
+            for job_id in job_ids
+        ]
+        await asyncio.gather(*start_tasks, return_exceptions=True)
+
+    final_statuses = {}
+    try:
+        with TqdmUpTo(
+            total=len(jobs), desc=f"Monitoring {len(jobs)} jobs", leave=True
+        ) as pbar:
+            # Create a waiter for each job's completion event
+            wait_tasks = [event.wait() for event in job_status_events.values()]
+
+            for future in asyncio.as_completed(wait_tasks):
+                await future
+                pbar.update(1)  # Increment progress bar as each job finishes
+
+        # All jobs are complete, fetch final statuses
+        status_tasks = [api.get_job(job_id) for job_id in job_ids]
+        results = await asyncio.gather(*status_tasks, return_exceptions=True)
+
+        for i, result in enumerate(results):
+            job_id = job_ids[i]
+            if isinstance(result, Exception):
+                final_statuses[job_id] = f"Error fetching status: {result}"
+            else:
+                final_statuses[job_id] = STATUS_JOB.get(result.get("status"), "Unknown")
+
+    finally:
+        # Cleanup
+        try:
+            connection.unsubscribe(id=listener.uid)
+            connection.remove_listener(listener)
+        except Exception:
+            logger.debug("Failed to unsubscribe/remove batch listener", exc_info=True)
+
+    return final_statuses

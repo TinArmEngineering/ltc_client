@@ -86,17 +86,19 @@ class WindingApi:
             }
         }
         """
-        if isinstance(netlist_params["terminal_resistance"], dict):
-            all_ok = True
-            for expectedkey in ["magnitude", "shape", "units"]:
-                if expectedkey not in netlist_params["terminal_resistance"]:
-                    all_ok = False
-            if not all_ok:
-                raise (ValueError, "terminal_resistance is not correct")
-        else:
+        terminal_resistance = netlist_params.get("terminal_resistance")
+        if not isinstance(terminal_resistance, dict):
             terminal_resistance = Quantity(netlist_params["terminal_resistance"])
             netlist_params["terminal_resistance"] = terminal_resistance.to_dict()
             logger.warning(netlist_params["terminal_resistance"])
+        else:
+            # Validate that the dictionary has the expected structure
+            expected_keys = {"magnitude", "shape", "units"}
+            if not expected_keys.issubset(terminal_resistance.keys()):
+                raise ValueError(
+                    "terminal_resistance dictionary is missing required keys."
+                )
+
         headers = {}
         response = requests.request(
             "POST",

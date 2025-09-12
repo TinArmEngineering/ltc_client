@@ -24,12 +24,25 @@ JOB_ARTIFACT_REMOTE_URL = "https://example.com/test_plot.png"
 MATERIAL_ID = "66018e5d1cd3bd0d3453646f"
 Q = pint.get_application_registry()
 
-api = ltc_client.Api(root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID)
-
 
 class ApiTestCase(unittest.TestCase):
-    @mock.patch("ltc_client.api.requests")
-    def test_create_log(self, mock_requests):
+    def setUp(self):
+        # Patch requests.Session and create the Api instance after the patch is active
+        self.session_patcher = mock.patch("ltc_client.api.requests.Session")
+        self.MockSession = self.session_patcher.start()
+        self.mock_session = self.MockSession.return_value
+        self.api = ltc_client.Api(
+            root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID
+        )
+
+    def tearDown(self):
+        self.session_patcher.stop()
+
+    def test_create_log(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
         message = ltc_client.Log(
             associated_job_id=JOB_ID,
             level="info",
@@ -39,9 +52,10 @@ class ApiTestCase(unittest.TestCase):
             call_stack="test callstack",
         )
 
-        api.create_log(message)
-        mock_requests.post.assert_called_with(
-            url=f"{ROOT_URL}/logs?apikey={API_KEY}",
+        self.api.create_log(message)
+        self.mock_session.post.assert_called_with(
+            url=f"{ROOT_URL}/logs",
+            params={},
             json={
                 "associated_job_id": JOB_ID,
                 "level": "info",
@@ -53,59 +67,86 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_get_job(self, mock_requests):
-        api.get_job(JOB_ID)
-        mock_requests.get.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
+    def test_get_job(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.get.return_value = mock_response
+
+        self.api.get_job(JOB_ID)
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}",
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_update_job_status(self, mock_requests):
-        api.update_job_status(JOB_ID, JOB_STATUS)
-        mock_requests.put.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}?node_id={NODE_ID}&apikey={API_KEY}&percentage_complete=None"
+    def test_update_job_status(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.put.return_value = mock_response
+
+        self.api.update_job_status(JOB_ID, JOB_STATUS)
+        self.mock_session.put.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/status/{JOB_STATUS}",
+            params={"node_id": NODE_ID},
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_get_job_artifact_not_found(self, mock_requests):
+    def test_get_job_artifact_not_found(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"artifacts": []}
+        self.mock_session.get.return_value = mock_response
+
         with self.assertRaises(Exception):
-            api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
-        mock_requests.get.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
+            self.api.get_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}",
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_get_promoted_job_artifact_raise(self, mock_requests):
+    def test_get_promoted_job_artifact_raise(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"artifacts": []}
+        self.mock_session.get.return_value = mock_response
+
         with self.assertRaises(Exception):
-            api.get_promoted_job_artifact("12", "34")
-        mock_requests.get.assert_called_with(
-            url=f"{ROOT_URL}/jobs/12?apikey={API_KEY}",
+            self.api.get_promoted_job_artifact("12", "34")
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/12",
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_get_promoted_job_artifact(self, mock_requests):
-        mock_requests.get.return_value.json.return_value = {
-            "artifacts": [
-                {
-                    "id": JOB_ARTIFACT_ID,
-                    "url": JOB_ARTIFACT_REMOTE_URL,
-                }
-            ]
-        }
+    @mock.patch("time.sleep")
+    def test_get_promoted_job_artifact(self, mock_sleep):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        # First call returns non-promoted, second returns promoted
+        mock_response.json.side_effect = [
+            {"artifacts": [{"id": JOB_ARTIFACT_ID, "url": "file://..."}]},
+            {
+                "artifacts": [
+                    {
+                        "id": JOB_ARTIFACT_ID,
+                        "url": JOB_ARTIFACT_REMOTE_URL,
+                    }
+                ]
+            },
+        ]
+        self.mock_session.get.return_value = mock_response
 
         # Call get_promoted_job_artifact fassing a callback function
-        api.get_promoted_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+        self.api.get_promoted_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
 
-        mock_requests.get.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}?apikey={API_KEY}",
+        self.assertEqual(self.mock_session.get.call_count, 2)
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}",
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_create_job_artifact(self, mock_requests):
-        api.create_job_artifact(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_REMOTE_URL)
-        mock_requests.post.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
+    def test_create_job_artifact(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
+        self.api.create_job_artifact(JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_REMOTE_URL)
+        self.mock_session.post.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts",
+            params={"promote": False},
             json={
                 "created_on_node": NODE_ID,
                 "type": JOB_ARTIFACT_TYPE,
@@ -113,53 +154,69 @@ class ApiTestCase(unittest.TestCase):
             },
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_create_job_artifact_from_file(self, mock_requests):
-        api.create_job_artifact_from_file(
+    def test_create_job_artifact_from_file(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
+        self.api.create_job_artifact_from_file(
             JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH
         )
-        mock_requests.post.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=False&apikey={API_KEY}",
+        self.mock_session.post.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts",
+            params={"promote": False},
             json={
-                "created_on_node": NODE_ID,
+                "created_on_node": "testnode",
                 "type": JOB_ARTIFACT_TYPE,
                 "url": JOB_ARTIFACT_FILE_URL,
             },
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_update_job_artifact(self, mock_requests):
-        api.create_job_artifact_from_file(
+    def test_create_job_artifact_from_file_promote(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
+        self.api.create_job_artifact_from_file(
             JOB_ID, JOB_ARTIFACT_TYPE, JOB_ARTIFACT_FILE_PATH, True
         )
-        mock_requests.post.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts?promote=True&apikey={API_KEY}",
+        self.mock_session.post.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts",
+            params={"promote": True},
             json={
+                "created_on_node": "testnode",
                 "type": JOB_ARTIFACT_TYPE,
                 "url": JOB_ARTIFACT_FILE_URL,
             },
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_update_job_artifact(self, mock_requests):
-        api.update_job_artifact(
+    def test_update_job_artifact(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.put.return_value = mock_response
+
+        self.api.update_job_artifact(
             JOB_ID,
             JOB_ARTIFACT_ID,
             {"type": JOB_ARTIFACT_TYPE, "url": JOB_ARTIFACT_REMOTE_URL},
         )
-        mock_requests.put.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}?apikey={API_KEY}",
+        self.mock_session.put.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}",
             json={
                 "type": JOB_ARTIFACT_TYPE,
                 "url": JOB_ARTIFACT_REMOTE_URL,
             },
         )
 
-    @mock.patch("ltc_client.api.requests")
-    def test_promote_job_artifact(self, mock_requests):
-        api.promote_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
-        mock_requests.put.assert_called_with(
-            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote?apikey={API_KEY}",
+    def test_promote_job_artifact(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.put.return_value = mock_response
+
+        self.api.promote_job_artifact(JOB_ID, JOB_ARTIFACT_ID)
+        self.mock_session.put.assert_called_with(
+            url=f"{ROOT_URL}/jobs/{JOB_ID}/artifacts/{JOB_ARTIFACT_ID}/promote",
+            params={},
         )
 
     def test_tae_model(self):
@@ -290,9 +347,21 @@ class ApiTestCase(unittest.TestCase):
 
 
 class MaterialTestCase(unittest.TestCase):
-    @mock.patch("ltc_client.api.requests")
-    def test_get_material(self, mock_requests):
-        mock_requests.get.return_value.json.return_value = {
+    def setUp(self):
+        self.session_patcher = mock.patch("ltc_client.api.requests.Session")
+        self.MockSession = self.session_patcher.start()
+        self.mock_session = self.MockSession.return_value
+        self.api = ltc_client.Api(
+            root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID
+        )
+
+    def tearDown(self):
+        self.session_patcher.stop()
+
+    def test_get_material(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "id": MATERIAL_ID,
             "reference": "www.example.com",
             "name": "test_name",
@@ -309,10 +378,12 @@ class MaterialTestCase(unittest.TestCase):
                 }
             ],
         }
-        material = api.get_material(MATERIAL_ID)
+        self.mock_session.get.return_value = mock_response
 
-        mock_requests.get.assert_called_with(
-            url=f"{ROOT_URL}/materials/{MATERIAL_ID}?apikey={API_KEY}",
+        material = self.api.get_material(MATERIAL_ID)
+
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/materials/{MATERIAL_ID}",
         )
 
         self.assertEqual(material.id, MATERIAL_ID)
@@ -324,8 +395,11 @@ class MaterialTestCase(unittest.TestCase):
         )  # Assuming one property in data
         self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
 
-    @mock.patch("ltc_client.api.requests")
-    def test_create_material(self, mock_requests):
+    def test_create_material(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
         api_data = {
             "id": "66018e5d1cd3bd0d3453646f",
             "reference": "www.example.com",

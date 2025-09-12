@@ -173,14 +173,18 @@ class Api:
         self._org_id = org_id
         self._node_id = node_id
 
+        self._session = requests.Session()
+        self._session.params = {"apikey": self._api_key}
+        self._session.headers.update({"Content-Type": "application/json"})
+
         logger.info(f"root_url: {self._root_url}")
 
     def get_job(self, job_id):
         """
         Get a job from the TAE API
         """
-        response = requests.get(
-            url=f"{self._root_url}/jobs/{job_id}?apikey={self._api_key}",
+        response = self._session.get(
+            url=f"{self._root_url}/jobs/{job_id}",
         )
         response.raise_for_status()
         return response.json()
@@ -189,9 +193,10 @@ class Api:
         """
         Create a job for the TAE API
         """
-        response = requests.post(
-            url=f"{self._root_url}/jobs/?apikey={self._api_key}&org_id={self._org_id}",
+        response = self._session.post(
+            url=f"{self._root_url}/jobs/",
             json=job.to_api(),
+            params={"org_id": self._org_id},
         )
         response.raise_for_status()
         if response.status_code == 200:
@@ -202,10 +207,13 @@ class Api:
         """
         Update a job status
         """
-        url = f"{self._root_url}/jobs/{job_id}/status/{status}?node_id={self._node_id}&apikey={self._api_key}&percentage_complete={percentage_complete}"
+        url = f"{self._root_url}/jobs/{job_id}/status/{status}"
         logger.info(f"Updating job status: {url}")
 
-        response = requests.put(url=url)
+        params = {"node_id": self._node_id}
+        if percentage_complete is not None:
+            params["percentage_complete"] = percentage_complete
+        response = self._session.put(url=url, params=params)
         response.raise_for_status()
         return response.json()
 
@@ -242,8 +250,9 @@ class Api:
         """
         Post an artifact to a job
         """
-        response = requests.post(
-            url=f"{self._root_url}/jobs/{job_id}/artifacts?promote={promote}&apikey={self._api_key}",
+        response = self._session.post(
+            url=f"{self._root_url}/jobs/{job_id}/artifacts",
+            params={"promote": promote},
             json={
                 "created_on_node": self._node_id,
                 "type": type,
@@ -265,8 +274,8 @@ class Api:
         """
         Update an artifact
         """
-        response = requests.put(
-            url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}?apikey={self._api_key}",
+        response = self._session.put(
+            url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}",
             json=artifact,
         )
         response.raise_for_status()
@@ -276,8 +285,9 @@ class Api:
         """
         Promote an artifact to a job
         """
-        response = requests.put(
-            url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}/promote?apikey={self._api_key}",
+        response = self._session.put(
+            url=f"{self._root_url}/jobs/{job_id}/artifacts/{artifact_id}/promote",
+            params={},
         )
         response.raise_for_status()
         return response.json()
@@ -286,8 +296,8 @@ class Api:
         """
         Delete a job
         """
-        response = requests.delete(
-            url=f"{self._root_url}/jobs/{job_id}?apikey={self._api_key}",
+        response = self._session.delete(
+            url=f"{self._root_url}/jobs/{job_id}",
         )
         response.raise_for_status()
         return
@@ -296,8 +306,9 @@ class Api:
         """
         Create job data
         """
-        response = requests.post(
-            url=f"{self._root_url}/jobs/{job_id}/data?apikey={self._api_key}",
+        response = self._session.post(
+            url=f"{self._root_url}/jobs/{job_id}/data",
+            params={},
             json=data.to_dict(),
         )
         response.raise_for_status()
@@ -307,8 +318,8 @@ class Api:
         """
         Update job data
         """
-        response = requests.put(
-            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}?apikey={self._api_key}",
+        response = self._session.put(
+            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}",
             json=data.to_dict(),
         )
         response.raise_for_status()
@@ -318,8 +329,8 @@ class Api:
         """
         Delete job data
         """
-        response = requests.delete(
-            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}?apikey={self._api_key}",
+        response = self._session.delete(
+            url=f"{self._root_url}/jobs/{job_id}/data/{data_name}",
         )
         response.raise_for_status()
 
@@ -327,8 +338,8 @@ class Api:
         """
         Get a reusable artifact from the TAE API
         """
-        response = requests.get(
-            url=f"{self._root_url}/reusable_artifacts/{hash}?apikey={self._api_key}",
+        response = self._session.get(
+            url=f"{self._root_url}/reusable_artifacts/{hash}",
         )
         response.raise_for_status()
         return response.json()
@@ -337,8 +348,8 @@ class Api:
         """
         Update a reusable_artifact
         """
-        response = requests.put(
-            url=f"{self._root_url}/reusable_artifacts/{hash}?apikey={self._api_key}",
+        response = self._session.put(
+            url=f"{self._root_url}/reusable_artifacts/{hash}",
             json=reusable_artifact,
         )
         response.raise_for_status()
@@ -348,8 +359,9 @@ class Api:
         """
         Update an reusable_artifact's URL
         """
-        response = requests.patch(
-            url=f"{self._root_url}/reusable_artifacts/{hash}/url?apikey={self._api_key}",
+        response = self._session.patch(
+            url=f"{self._root_url}/reusable_artifacts/{hash}/url",
+            params={},
             json={"url": url, "mimetype": mimetype},
         )
         response.raise_for_status()
@@ -359,8 +371,9 @@ class Api:
         """
         Create reusable_artifact data
         """
-        response = requests.post(
-            url=f"{self._root_url}/reusable_artifacts/{hash}/data?apikey={self._api_key}",
+        response = self._session.post(
+            url=f"{self._root_url}/reusable_artifacts/{hash}/data",
+            params={},
             json=data.to_dict(),
         )
         response.raise_for_status()
@@ -370,8 +383,9 @@ class Api:
         """
         Promote reusable artifact
         """
-        response = requests.put(
-            url=f"{self._root_url}/reusable_artifacts/{hash}/promote?apikey={self._api_key}",
+        response = self._session.put(
+            url=f"{self._root_url}/reusable_artifacts/{hash}/promote",
+            params={},
         )
         response.raise_for_status()
         return response.json()
@@ -382,8 +396,8 @@ class Api:
         """
         from .helpers import Material
 
-        response = requests.get(
-            url=f"{self._root_url}/materials/{material_id}?apikey={self._api_key}",
+        response = self._session.get(
+            url=f"{self._root_url}/materials/{material_id}",
         )
         response.raise_for_status()
         return Material.from_api(response.json())
@@ -392,8 +406,9 @@ class Api:
         """
         Create a material for the TAE API
         """
-        response = requests.post(
-            url=f"{self._root_url}/materials?apikey={self._api_key}",
+        response = self._session.post(
+            url=f"{self._root_url}/materials",
+            params={},
             json=material.to_api(),
         )
         response.raise_for_status()
@@ -405,8 +420,8 @@ class Api:
         """
         Get all jobs
         """
-        response = requests.get(
-            url=f"{self._root_url}/jobs?apikey={self._api_key}",
+        response = self._session.get(
+            url=f"{self._root_url}/jobs",
         )
         response.raise_for_status()
         return response.json()
@@ -418,8 +433,9 @@ class Api:
 
         log.node = self._node_id
 
-        response = requests.post(
-            url=f"{self._root_url}/logs?apikey={self._api_key}",
+        response = self._session.post(
+            url=f"{self._root_url}/logs",
+            params={},
             json=log.to_api(),
         )
         response.raise_for_status()
