@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 
 from ltc_client.helpers import decode
-from ltc_client.helpers import Machine, Job, Material
+from ltc_client.helpers import Machine, Job, Material, JobBatchProgressListener
 
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
@@ -66,6 +66,99 @@ class TestDecodeFunction(unittest.TestCase):
         self.assertEqual(result, mock_quant)
         mock_quant.ito_base_units.assert_called_once()
         mock_logger.debug.assert_called()
+
+
+class TestJobBatchProgressListener(unittest.TestCase):
+    def test_on_message_calls_callback_for_tracked_job(self):
+        # Setup
+        job_ids = ["job-1", "job-2"]
+        mock_callback = MagicMock()
+        listener = JobBatchProgressListener(job_ids, mock_callback)
+
+        target_job_id = "job-1"
+        payload = {"status": "running"}
+        message = json.dumps(payload).encode()
+        headers = [(b"destination", f"/topic/{target_job_id}.worker.progress".encode())]
+        frame = MagicMock(header=headers, message=message)
+
+        # Execute
+        listener.on_message(frame)
+
+        # Verify
+        mock_callback.assert_called_once_with(target_job_id, payload)
+
+    def test_on_message_ignores_untracked_job(self):
+        # Setup
+        job_ids = ["job-1", "job-2"]
+        mock_callback = MagicMock()
+        listener = JobBatchProgressListener(job_ids, mock_callback)
+
+        untracked_job_id = "job-3"
+        payload = {"status": "running"}
+        message = json.dumps(payload).encode()
+        headers = [
+            (b"destination", f"/topic/{untracked_job_id}.worker.progress".encode())
+        ]
+        frame = MagicMock(header=headers, message=message)
+
+        # Execute
+        listener.on_message(frame)
+
+        # Verify
+        mock_callback.assert_not_called()
+
+    def test_on_message_handles_malformed_destination(self):
+        # Setup
+        job_ids = ["job-1"]
+        mock_callback = MagicMock()
+        listener = JobBatchProgressListener(job_ids, mock_callback)
+
+        payload = {"status": "running"}
+        message = json.dumps(payload).encode()
+        headers = [(b"destination", b"/topic/")]  # Malformed
+        frame = MagicMock(header=headers, message=message)
+
+        # Execute
+        listener.on_message(frame)
+
+        # Verify
+        mock_callback.assert_not_called()
+
+    def test_on_message_handles_malformed_json(self):
+        # Setup
+        job_ids = ["job-1"]
+        mock_callback = MagicMock()
+        listener = JobBatchProgressListener(job_ids, mock_callback)
+
+        target_job_id = "job-1"
+        message = b"this is not json"
+        headers = [(b"destination", f"/topic/{target_job_id}.worker.progress".encode())]
+        frame = MagicMock(header=headers, message=message)
+
+        # Execute
+        listener.on_message(frame)
+
+        # Verify
+        mock_callback.assert_not_called()
+
+    def test_on_message_parses_time_prefixed_json(self):
+        # Setup
+        job_ids = ["job-1"]
+        mock_callback = MagicMock()
+        listener = JobBatchProgressListener(job_ids, mock_callback)
+
+        target_job_id = "job-1"
+        payload = {"status": "complete"}
+        message_str = f"12:34:56 - INFO - {json.dumps(payload)}"
+        message = message_str.encode()
+        headers = [(b"destination", f"/topic/{target_job_id}.worker.progress".encode())]
+        frame = MagicMock(header=headers, message=message)
+
+        # Execute
+        listener.on_message(frame)
+
+        # Verify
+        mock_callback.assert_called_once_with(target_job_id, payload)
 
 
 class TestMachine(unittest.TestCase):
