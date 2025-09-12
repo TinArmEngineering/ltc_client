@@ -7,10 +7,6 @@ import uuid
 
 import pint
 
-from ltc_client import (
-    helpers,
-)  # local import used inside methods for NameQuantityPair/Quantity/ Machine lookups
-
 Q = pint.get_application_registry()
 
 
@@ -19,19 +15,51 @@ class Job:
     machine: Any
     operating_point: Dict[str, Any]
     simulation: Dict[str, Any]
-    _mesh_reuse_series: Optional[str] = field(default=None, repr=False)
-    _netlist: Optional[dict] = None
     title: Optional[str] = None
     type: str = "electromagnetic_spmbrl_fscwseg"
     status: int = 0
     id: Optional[str] = None
-    _string_data: Dict[str, str] = field(init=False)
 
-    def __post_init__(self):
+    # Private attributes that are set in __post_init__
+    _mesh_reuse_series: Optional[str] = field(init=False, repr=False)
+    _netlist: Optional[dict] = field(init=False)
+    _string_data: Dict[str, str] = field(init=False, repr=False)
+
+    def __init__(
+        self,
+        machine: Any,
+        operating_point: Dict[str, Any],
+        simulation: Dict[str, Any],
+        title: Optional[str] = None,
+        type: str = "electromagnetic_spmbrl_fscwseg",
+        status: int = 0,
+        id: Optional[str] = None,
+        mesh_reuse_series: Optional[str] = None,
+        netlist: Optional[dict] = None,
+    ):
+        # Manually call the dataclass-generated init for standard fields
+        self.machine = machine
+        self.operating_point = operating_point
+        self.simulation = simulation
+        self.title = title
+        self.type = type
+        self.status = status
+        self.id = id
+
+        # --- Post-init logic ---
         if not self.title:
             self.title = self.generate_title()
-        if self._mesh_reuse_series is None:
-            self._mesh_reuse_series = str(uuid4())
+
+        if mesh_reuse_series is not None and not isinstance(mesh_reuse_series, str):
+            raise ValueError("mesh_reuse_series must be a string or None")
+        self._mesh_reuse_series = (
+            mesh_reuse_series if mesh_reuse_series is not None else str(uuid4())
+        )
+
+        if netlist is not None and not isinstance(netlist, dict):
+            raise ValueError("netlist must be a dict or None")
+        self._netlist = netlist
+
         self._string_data = {
             "mesh_reuse_series": self._mesh_reuse_series or "",
             "netlist": json.dumps(self._netlist) if self._netlist is not None else "",
@@ -41,13 +69,7 @@ class Job:
         return f"Job({self.machine}, {self.operating_point}, {self.simulation})"
 
     def generate_title(self) -> str:
-        try:
-            # keep networking but robust to failures
-            random_offset = random.randint(500, 286797)
-            # simple fallback behavior; tests patch generate_title in some places
-            return str(uuid4())
-        except Exception:
-            return str(uuid4())
+        return str(uuid4())
 
     @property
     def netlist(self) -> Optional[dict]:
@@ -55,13 +77,10 @@ class Job:
 
     @netlist.setter
     def netlist(self, value: Optional[dict]):
+        if value is not None and not isinstance(value, dict):
+            raise ValueError("netlist must be a dict or None")
         self._netlist = value
-        if not hasattr(self, "_string_data"):
-            self._string_data = {
-                "mesh_reuse_series": self.mesh_reuse_series or "",
-                "netlist": json.dumps(value) if value is not None else "",
-            }
-        else:
+        if hasattr(self, "_string_data"):
             self._string_data["netlist"] = (
                 json.dumps(value) if value is not None else ""
             )
@@ -123,6 +142,9 @@ class Job:
 
     def from_api(self, job_dict: dict) -> None:
         """Populate this Job instance from API dict (instance method used by tests)."""
+        # local import to avoid circular dependency
+        from ltc_client import helpers
+
         # string_data
         self.title = job_dict.get("title", None)
         self.status = job_dict.get("status", 0)

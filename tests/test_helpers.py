@@ -286,7 +286,7 @@ class TestJob(unittest.TestCase):
             self.mock_machine,
             self.mock_operating_point,
             self.mock_simulation,
-            _mesh_reuse_series="custom-series",
+            mesh_reuse_series="custom-series",
         )
 
         self.assertEqual(job.mesh_reuse_series, "custom-series")
@@ -304,18 +304,24 @@ class TestJob(unittest.TestCase):
 
     def test_job_netlist_property(self):
         """Test the getter and setter for the netlist property."""
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
-        # Test initial value
-        self.assertEqual(job.netlist, None)
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine, self.mock_operating_point, self.mock_simulation
+            )
+            # Test initial value
+            self.assertEqual(job.netlist, None)
 
-        # Test setting and getting
-        netlist_data = {"component": "resistor", "value": 100}
-        job.netlist = netlist_data
-        self.assertEqual(job.netlist, netlist_data)
+            # Test setting and getting
+            netlist_data = {"component": "resistor", "value": 100}
+            job.netlist = netlist_data
+            self.assertEqual(job.netlist, netlist_data)
 
     def test_job_to_api_with_string_data(self):
         """Test that to_api includes netlist and mesh_reuse_series."""
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine, self.mock_operating_point, self.mock_simulation
+            )
 
         netlist_data = {
             "I_A": {
@@ -490,15 +496,16 @@ class TestJob(unittest.TestCase):
         )
 
     def test_job_repr(self):
-        job = Job(
-            self.mock_machine,
-            self.mock_operating_point,
-            self.mock_simulation,
-            title="test-job",
-        )
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine,
+                self.mock_operating_point,
+                self.mock_simulation,
+                title="test-job",
+            )
 
-        expected_repr = f"Job({self.mock_machine}, {self.mock_operating_point}, {self.mock_simulation})"
-        self.assertEqual(repr(job), expected_repr)
+            expected_repr = f"Job({self.mock_machine}, {self.mock_operating_point}, {self.mock_simulation})"
+            self.assertEqual(repr(job), expected_repr)
 
     @patch("ltc_client.helpers.NameQuantityPair")
     @patch("ltc_client.helpers.Quantity")
@@ -512,13 +519,14 @@ class TestJob(unittest.TestCase):
         }
         mock_name_quantity_pair.return_value = mock_nqp_instance
 
-        job = Job(
-            self.mock_machine,
-            self.mock_operating_point,
-            self.mock_simulation,
-            title="test-job",
-        )
-        result = job.to_api()
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine,
+                self.mock_operating_point,
+                self.mock_simulation,
+                title="test-job",
+            )
+            result = job.to_api()
 
         # Verify structure
         self.assertIn("status", result)
@@ -538,21 +546,26 @@ class TestJob(unittest.TestCase):
         self.assertIsInstance(result["string_data"], list)
 
     def test_mesh_reuse_to_api(self):
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
-        # Test setter
-        job.mesh_reuse_series = "new-series"
-        result = job.to_api()
-        self.assertIn(
-            {"name": "mesh_reuse_series", "value": "new-series"}, result["string_data"]
-        )
-
-        # Test default value
-        job = Job(self.mock_machine, self.mock_operating_point, self.mock_simulation)
-        result = job.to_api()
-        self.assertIn(
-            {"name": "mesh_reuse_series", "value": job.mesh_reuse_series},
-            result["string_data"],
-        )
+        with patch.object(Job, "generate_title", return_value="test-title"):
+            job = Job(
+                self.mock_machine, self.mock_operating_point, self.mock_simulation
+            )
+            # Test setter
+            job.mesh_reuse_series = "new-series"
+            result = job.to_api()
+            self.assertIn(
+                {"name": "mesh_reuse_series", "value": "new-series"},
+                result["string_data"],
+            )
+            # Test default value
+            job = Job(
+                self.mock_machine, self.mock_operating_point, self.mock_simulation
+            )
+            result = job.to_api()
+            self.assertIn(
+                {"name": "mesh_reuse_series", "value": job.mesh_reuse_series},
+                result["string_data"],
+            )
 
     def test_job_to_api_from_api_round_trip(self):
         """Test that Job.to_api() and Job.from_api() produce equivalent objects."""
