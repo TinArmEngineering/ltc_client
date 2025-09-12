@@ -3,6 +3,85 @@
 
 Node creation tool for TAE workers
 
+Creating and Monitoring Jobs with ltc_client
+This guide provides a minimal, working example of how to create one or more jobs and monitor their progress asynchronously using ltc_client.
+
+1. Setup
+First, ensure you have the necessary libraries installed and import them. You will also need to configure the API connections, preferably using environment variables.
+
+You can configure credentials using environment variables or a local YAML file.
+
+**Using Environment Variables**
+
+*   **API Credentials**: `API_ROOT_URL`, `API_KEY`, `ORG_ID`
+
+**Using a YAML Configuration File**
+
+Alternatively, create a file named `configurations.yaml`:
+```yaml
+api:
+  root_url: https://api.ltc.tinarmengineering.com
+  api_key: XXXXXXXXXXXXX # Your API key from your account page
+  org_id: XXXXXXXXXXXXX  # Your organization ID from your account page
+
+stomp:
+  host: queue.ltc.tinarmengineering.com
+  port: 15671
+  user: XXXXXXXX
+  password: XXXXXXXXXX
+```
+
+You can then load it in your Python script (you may need to `pip install pyyaml`):
+```python
+import yaml
+
+with open("configurations.yaml", "r") as f:
+    config = yaml.safe_load(f)
+# example usage
+api = ltc_client.Api(**config['api'])
+```
+
+2. Create a machine
+For detils of each section see the example files.
+```python
+m = ltc_client.Machine(
+    stator=stator_parameters,
+    rotor=rotor_parameters,
+    winding=winding_parameters,
+    materials=materials,
+)
+```
+we also need to get the netlist.
+```python
+netlist #we will give an example later
+```
+
+3. Create multiple jobs
+'''python
+jobs = []
+for idx in range(3):
+    job = ltc_client.Job(machine=m, simulation=sim_param,  
+        mesh_reuse_series=mesh_reuse_series,
+        title=f"Job_{idx}",
+        netlist=net)
+    job.type = "electromagnetic_spmarc_fscwseg"
+    jobs.append(job)
+```
+
+ 4. Make a stomp connection
+```python
+ def make_connection(stomp_conf):
+    ws_echo = create_connection(
+        f"{stomp_conf["protocol"]}://{stomp_conf["host"]}:{stomp_conf["port"]}/ws"
+    )
+    connection = webstompy.StompConnection(connector=ws_echo)
+    connection.connect(login=stomp_conf["user"], passcode=stomp_conf["password"])
+    
+    return connection
+connection = make_connection(config["stomp"])
+```
+
+
 Development with Poetry https://python-poetry.org/docs/basic-usage/
 
 Before committing:
