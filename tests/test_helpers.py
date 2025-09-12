@@ -193,7 +193,7 @@ class TestJob(unittest.TestCase):
             self.mock_machine,
             self.mock_operating_point,
             self.mock_simulation,
-            mesh_reuse_series="custom-series",
+            _mesh_reuse_series="custom-series",
         )
 
         self.assertEqual(job.mesh_reuse_series, "custom-series")
