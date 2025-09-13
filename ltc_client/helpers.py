@@ -618,7 +618,7 @@ async def monitor_jobs(
 
     # Subscribe to topics for all jobs in the batch
     for job_id in job_ids:
-        topic = f"/topic/{job_ids}.*.*.progress"
+        topic = f"/topic/{job_id}.*.*.progress"
         logger.debug(f"Subscribing to {topic}")
         connection.subscribe(destination=topic, id=f"{listener.uid}-{job_id}")
 
