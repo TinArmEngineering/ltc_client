@@ -3,7 +3,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 from ltc_client.helpers import (
     ProgressListener,
@@ -12,8 +12,100 @@ from ltc_client.helpers import (
     Machine,
     TqdmUpTo,
     monitor_jobs,
+    make_stomp_connection,
 )
 from ltc_client.api import JOB_STATUS, STATUS_JOB
+
+
+@pytest.fixture
+def mock_websocket():
+    """Mock WebSocket connection"""
+    return Mock()
+
+
+@pytest.fixture
+def mock_stomp_connection():
+    """Mock STOMP connection"""
+    mock = Mock()
+    mock.connect = Mock()
+    return mock
+
+
+def test_make_stomp_connection(mock_websocket, mock_stomp_connection):
+    """Test the make_stomp_connection function creates and returns a proper connection."""
+
+    # Test configuration
+    test_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        "port": 15674,
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    # Set up our mocks
+    with patch(
+        "ltc_client.helpers.create_connection", return_value=mock_websocket
+    ) as mock_create:
+        with patch(
+            "ltc_client.helpers.StompConnection",
+            return_value=mock_stomp_connection,
+        ) as mock_stomp:
+
+            # Call the function
+            conn = make_stomp_connection(test_config)
+
+            # Verify create_connection was called with the correct URL
+            mock_create.assert_called_once_with("ws://test.example.com:15674/ws")
+
+            # Verify StompConnection was created with our WebSocket
+            mock_stomp.assert_called_once_with(connector=mock_websocket)
+
+            # Verify connect was called with credentials
+            mock_stomp_connection.connect.assert_called_once_with(
+                login="testuser", passcode="testpass"
+            )
+
+            # Verify the connection was returned
+            assert conn == mock_stomp_connection
+
+
+def test_make_stomp_connection_handles_connection_error(mock_websocket):
+    """Test that connection errors are properly handled."""
+
+    test_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        "port": 15674,
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    # Mock create_connection to raise an exception
+    with patch(
+        "ltc_client.helpers.create_connection",
+        side_effect=ConnectionError("Failed to connect"),
+    ) as mock_create:
+        with pytest.raises(ConnectionError) as exc_info:
+            make_stomp_connection(test_config)
+
+        assert "Failed to connect" in str(exc_info.value)
+
+
+def test_make_stomp_connection_invalid_config():
+    """Test that invalid configurations raise the appropriate error."""
+
+    # Missing required fields
+    invalid_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        # Missing port
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    with pytest.raises(KeyError):
+        make_stomp_connection(invalid_config)
 
 
 @pytest.mark.asyncio

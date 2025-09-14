@@ -4,7 +4,8 @@ from .api import JOB_STATUS, STATUS_JOB
 import random
 import requests
 import pint
-from webstompy import StompListener
+from webstompy import StompListener, StompConnection
+from websocket import create_connection
 from tqdm.auto import tqdm
 import numpy as np
 import logging
@@ -106,6 +107,54 @@ class Machine(object):
         data.extend(list(x.to_dict() for x in rotor_api))
         data.extend(list(x.to_dict() for x in winding_api))
         return data
+
+
+def make_stomp_connection(stomp_conf):
+    """Create and establish a STOMP connection over WebSocket.
+
+    This function sets up a WebSocket connection to a STOMP server using the provided
+    configuration, and returns a connected STOMP client.
+
+    Parameters
+    ----------
+    stomp_conf : dict
+        Dictionary containing STOMP connection configuration with keys:
+        - protocol: Connection protocol (e.g. 'ws', 'wss')
+        - host: Hostname or IP address
+        - port: Connection port number
+        - user: Username for authentication
+        - password: Password for authentication
+
+    Returns
+    -------
+    webstompy.StompConnection
+        A connected STOMP client instance
+
+    Raises
+    ------
+    ConnectionError
+        If the connection to the STOMP server fails
+    ValueError
+        If the configuration parameters are invalid
+
+    Examples
+    --------
+    >>> stomp_conf = {
+    ...     "protocol": "ws",
+    ...     "host": "localhost",
+    ...     "port": 15674,
+    ...     "user": "guest",
+    ...     "password": "guest"
+    ... }
+    >>> connection = make_stomp_connection(stomp_conf)
+    """
+    ws_echo = create_connection(
+        f"{stomp_conf['protocol']}://{stomp_conf['host']}:{stomp_conf['port']}/ws"
+    )
+    connection = StompConnection(connector=ws_echo)
+    connection.connect(login=stomp_conf["user"], passcode=stomp_conf["password"])
+
+    return connection
 
 
 class TqdmUpTo(tqdm):

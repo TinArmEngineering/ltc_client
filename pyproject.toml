@@ -24,7 +24,7 @@ dependencies = [
     "python-logging-rabbitmq>=2.3.0",
     "requests>=2.32.3",
     "Pint>=0.24",
-    "numpy>=1.24",
+    "numpy>=2.0.2",
     "webstompy>=0.1.5",
     "tqdm>=4.66.4",
     "pydantic (>=2.11.7,<3.0.0)",
@@ -40,10 +40,10 @@ Repository = "https://github.com/TinArmEngineering/ltc_client/"
 [tool.poetry]
 version = "0.0.0"
 [tool.poetry.group.dev.dependencies]
-black = "^24.4.2"
-pytest = "^8.3.3"
-coverage = "^7.6.1"
-pytest-asyncio = "^0.21.0"
+black = "^24.10.0"
+pytest = "^8.4.2"
+coverage = "^7.10.6"
+pytest-asyncio = "^0.23.0"
 
 [tool.poetry.group.test.dependencies]
 mock = "^5.1.0"
@@ -78,5 +78,3 @@ format-jinja = """
 [tool.poetry-dynamic-versioning.files.".build_id"]
 persistent-substitution = true
 initial-content-jinja = """##teamcity[buildNumber '{%- if distance == 0 -%}{{- base -}}{%- else -%}{{- base }}.dev{{ distance }}+g{{commit}}{%- endif -%}']"""
-
-
