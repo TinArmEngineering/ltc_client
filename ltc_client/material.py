@@ -47,7 +47,7 @@ class Material:
                 NameQuantityPair(
                     "material_properties",
                     k,
-                    Quantity(*self.material_properties[k].to_tuple()),
+                    Quantity(self.material_properties[k]),
                 ).to_dict()
             )
 
