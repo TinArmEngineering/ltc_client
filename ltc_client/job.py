@@ -140,34 +140,35 @@ class Job:
         ]
         return job
 
-    def from_api(self, job_dict: dict) -> None:
-        """Populate this Job instance from API dict (instance method used by tests)."""
+    @classmethod
+    def from_api(cls, job_dict: dict) -> "Job":
+        """Create a Job instance from an API dict."""
         # local import to avoid circular dependency
         from ltc_client import helpers
 
         # string_data
-        self.title = job_dict.get("title", None)
-        self.status = job_dict.get("status", 0)
-        self.type = job_dict.get("type", "electromagnetic_spmbrl_fscwseg")
-        self.id = job_dict.get("id", None)
-        self._string_data = {
+        title = job_dict.get("title", None)
+        status = job_dict.get("status", 0)
+        job_type = job_dict.get("type", "electromagnetic_spmbrl_fscwseg")
+        job_id = job_dict.get("id", None)
+        string_data = {
             item["name"]: item["value"] for item in job_dict.get("string_data", [])
         }
-        self._mesh_reuse_series = self._string_data.get("mesh_reuse_series")
-        netlist_str = self._string_data.get("netlist")
+        mesh_reuse_series = string_data.get("mesh_reuse_series")
+        netlist_str = string_data.get("netlist")
         if netlist_str:
-            self._netlist = json.loads(netlist_str)
+            netlist = json.loads(netlist_str)
         else:
-            self._netlist = None
+            netlist = None
 
         # decode data sections using helpers.decode
         data = job_dict.get("data", [])
-        self.operating_point = {
+        operating_point = {
             item["name"]: helpers.decode(item["value"])
             for item in data
             if item.get("section") == "operating_point"
         }
-        self.simulation = {
+        simulation = {
             item["name"]: helpers.decode(item["value"])
             for item in data
             if item.get("section") == "simulation"
@@ -192,9 +193,20 @@ class Job:
             for thing in job_dict.get("materials", [])
         }
         # build Machine instance (use helpers.Machine)
-        self.machine = helpers.Machine(
+        machine = helpers.Machine(
             stator=stator_data,
             rotor=rotor_data,
             winding=winding_data,
             materials=material_data,
+        )
+        return cls(
+            machine=machine,
+            operating_point=operating_point,
+            simulation=simulation,
+            title=title,
+            type=job_type,
+            status=status,
+            id=job_id,
+            mesh_reuse_series=mesh_reuse_series,
+            netlist=netlist,
         )

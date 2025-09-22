@@ -3,7 +3,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, Mock
 
 from ltc_client.helpers import (
     ProgressListener,
@@ -11,8 +11,189 @@ from ltc_client.helpers import (
     Job,
     Machine,
     TqdmUpTo,
+    monitor_jobs,
+    make_stomp_connection,
 )
 from ltc_client.api import JOB_STATUS, STATUS_JOB
+
+
+@pytest.fixture
+def mock_websocket():
+    """Mock WebSocket connection"""
+    return Mock()
+
+
+@pytest.fixture
+def mock_stomp_connection():
+    """Mock STOMP connection"""
+    mock = Mock()
+    mock.connect = Mock()
+    return mock
+
+
+def test_make_stomp_connection(mock_websocket, mock_stomp_connection):
+    """Test the make_stomp_connection function creates and returns a proper connection."""
+
+    # Test configuration
+    test_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        "port": 15674,
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    # Set up our mocks
+    with patch(
+        "ltc_client.helpers.create_connection", return_value=mock_websocket
+    ) as mock_create:
+        with patch(
+            "ltc_client.helpers.StompConnection",
+            return_value=mock_stomp_connection,
+        ) as mock_stomp:
+
+            # Call the function
+            conn = make_stomp_connection(test_config)
+
+            # Verify create_connection was called with the correct URL
+            mock_create.assert_called_once_with("ws://test.example.com:15674/ws")
+
+            # Verify StompConnection was created with our WebSocket
+            mock_stomp.assert_called_once_with(connector=mock_websocket)
+
+            # Verify connect was called with credentials
+            mock_stomp_connection.connect.assert_called_once_with(
+                login="testuser", passcode="testpass"
+            )
+
+            # Verify the connection was returned
+            assert conn == mock_stomp_connection
+
+
+def test_make_stomp_connection_handles_connection_error(mock_websocket):
+    """Test that connection errors are properly handled."""
+
+    test_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        "port": 15674,
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    # Mock create_connection to raise an exception
+    with patch(
+        "ltc_client.helpers.create_connection",
+        side_effect=ConnectionError("Failed to connect"),
+    ) as mock_create:
+        with pytest.raises(ConnectionError) as exc_info:
+            make_stomp_connection(test_config)
+
+        assert "Failed to connect" in str(exc_info.value)
+
+
+def test_make_stomp_connection_invalid_config():
+    """Test that invalid configurations raise the appropriate error."""
+
+    # Missing required fields
+    invalid_config = {
+        "protocol": "ws",
+        "host": "test.example.com",
+        # Missing port
+        "user": "testuser",
+        "password": "testpass",
+    }
+
+    with pytest.raises(KeyError):
+        make_stomp_connection(invalid_config)
+
+
+@pytest.mark.asyncio
+async def test_monitor_jobs_handles_dict_returns():
+    """Test that monitor_jobs correctly handles dictionary returns from update_job_status."""
+
+    # Dummy API: update_job_status returns a dict, not a coroutine
+    class DummyAPI:
+        def update_job_status(self, job_id, status):
+            # Return a dictionary instead of a coroutine
+            return {"job_id": job_id, "status": status}
+
+        def get_job(self, job_id):
+            return {"status": JOB_STATUS["Complete"]}
+
+    api = DummyAPI()
+
+    # Dummy connection
+    class DummyConnection:
+        def __init__(self):
+            self.listeners = []
+            self.subscriptions = []
+
+        def add_listener(self, listener):
+            self.listeners.append(listener)
+
+        def subscribe(self, destination, id):
+            self.subscriptions.append((destination, id))
+
+        def unsubscribe(self, id):
+            pass
+
+        def remove_listener(self, listener):
+            if listener in self.listeners:
+                self.listeners.remove(listener)
+
+    conn = DummyConnection()
+
+    # Create test jobs
+    job1 = Job(Machine({}, {}, {}), {}, {}, title="test-job-1")
+    job1.id = "job-123"
+    job2 = Job(Machine({}, {}, {}), {}, {}, title="test-job-2")
+    job2.id = "job-456"
+    jobs = [job1, job2]
+
+    # Mock TqdmUpTo to avoid progress bar display
+    class DummyPbar:
+        def __init__(self, total, desc, leave=True):
+            self.total = total
+            self.desc = desc
+            self.n = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def update(self, n=1):
+            self.n += n
+
+    with patch("ltc_client.helpers.TqdmUpTo", DummyPbar):
+        # This would have failed with "TypeError: unhashable type: 'dict'"
+        # with the original implementation using asyncio.gather()
+        monitor_task = asyncio.create_task(monitor_jobs(api, jobs, conn))
+
+        # Let the function start and register listeners
+        await asyncio.sleep(0.1)
+
+        # Find the registered listener
+        assert len(conn.listeners) > 0, "No listener registered"
+        listener = conn.listeners[0]
+
+        # Simulate completion messages for both jobs
+        for job in jobs:
+            headers = [(b"destination", f"/topic/{job.id}.worker.progress".encode())]
+            payload = {"status": JOB_STATUS["Complete"]}
+            message = json.dumps(payload).encode()
+            frame = SimpleNamespace(header=headers, message=message)
+            listener.on_message(frame)
+
+        # Wait for monitor to complete
+        result = await asyncio.wait_for(monitor_task, timeout=2.0)
+
+        # Verify results
+        assert len(result) == 2
+        assert result[job1.id] == STATUS_JOB[JOB_STATUS["Complete"]]
+        assert result[job2.id] == STATUS_JOB[JOB_STATUS["Complete"]]
 
 
 def test_progress_listener_parses_time_prefixed_json():

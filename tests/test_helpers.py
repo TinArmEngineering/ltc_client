@@ -645,8 +645,7 @@ class TestJob(unittest.TestCase):
         api_dict["id"] = "test-job-id-123"
 
         # Create new job instance and load from API
-        new_job = Job.__new__(Job)  # Create without calling __init__
-        new_job.from_api(api_dict)
+        new_job = Job.from_api(api_dict)
 
         # Compare attributes
         self.assertEqual(new_job.title, original_job.title)

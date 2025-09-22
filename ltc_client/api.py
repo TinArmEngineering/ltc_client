@@ -3,11 +3,7 @@ import time
 import requests
 from math import prod
 import pint
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .helpers import Material
+from typing import TYPE_CHECKING, Any
 
 LOGGING_LEVEL = logging.INFO
 
@@ -390,7 +386,7 @@ class Api:
         response.raise_for_status()
         return response.json()
 
-    def get_material(self, material_id) -> "Material":
+    def get_material(self, material_id) -> Any:
         """
         Get a material from the TAE API
         """
