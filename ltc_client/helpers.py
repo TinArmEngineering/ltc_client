@@ -415,7 +415,7 @@ except NameError:
 
 # to re-export Material/Job for compatibility do a deferred import:
 try:
-    from .material import Material  # type: ignore
+    from .material import Material
     from .job import Job  # type: ignore
 except Exception:
     logger.exception("Deferred import of Material/Job failed")

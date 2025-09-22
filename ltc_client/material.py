@@ -3,7 +3,6 @@ import json
 import pint
 
 from ltc_client import helpers  # local import to access helpers.decode and logger
-from ltc_client.api import NameQuantityPair  # used only for constructing API shapes
 import numpy as np
 
 Q = pint.get_application_registry()
@@ -35,31 +34,21 @@ class Material:
 
     def to_api(self) -> Dict[str, Any]:
         """Return a dict shaped for the API expected by tests."""
+        # import helpers module attributes at call time so tests that patch ltc_client.helpers.NameQuantityPair/Quantity are honored
+        helpers_mod = __import__(
+            "ltc_client.helpers", fromlist=["NameQuantityPair", "Quantity"]
+        )
+        NameQuantityPair = helpers_mod.NameQuantityPair
+        Quantity = helpers_mod.Quantity
         data = []
-        for prop_name, quant in self.material_properties.items():
-            # quant is a pint.Quantity
-            mag = quant.magnitude
-            # normalize into list form
-            if hasattr(mag, "tolist"):
-                mag_list = list(np.array(mag).ravel())
-                shape = list(np.array(mag).shape) if np.array(mag).shape != () else [1]
-            else:
-                mag_list = [float(mag)]
-                shape = [1]
-            units = [{"name": str(quant.units), "exponent": 1}]
+        for k in self.material_properties:
+
             data.append(
-                {
-                    "section": "material_properties",
-                    "name": prop_name,
-                    "value": {
-                        "magnitude": [
-                            int(x) if float(x).is_integer() else float(x)
-                            for x in mag_list
-                        ],
-                        "shape": shape,
-                        "units": units,
-                    },
-                }
+                NameQuantityPair(
+                    "material_properties",
+                    k,
+                    Quantity(*self.material_properties[k].to_tuple()),
+                ).to_dict()
             )
 
         return {
