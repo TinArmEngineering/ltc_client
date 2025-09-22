@@ -1,6 +1,7 @@
 import json
 import unittest
 from unittest.mock import patch, MagicMock
+import warnings
 import numpy as np
 
 from ltc_client.helpers import decode
@@ -13,59 +14,110 @@ import pint
 Q = pint.get_application_registry()
 
 
-class CustomMock(MagicMock):
-    def __format__(self, format_spec):
-        # Implement your formatting logic here
-        # For example, return a fixed string or dynamically handle the format_spec
-        return "Mocked Format"
-
-
 class TestDecodeFunction(unittest.TestCase):
-    @patch("ltc_client.helpers.q.Quantity.from_tuple")
     @patch("ltc_client.helpers.logger")
-    def test_decode_with_single_magnitude(self, mock_logger, mock_from_tuple):
+    def test_decode_with_single_magnitude(self, mock_logger):
+        """Test decoding of a single scalar value."""
         # Setup
         enc = {
             "magnitude": [42],
             "shape": (1,),
             "units": [{"name": "meter", "exponent": 1}],
         }
-        mock_quant = CustomMock()
-        mock_from_tuple.return_value = mock_quant
 
         # Execute
         result = decode(enc)
 
         # Verify
-        mock_from_tuple.assert_called_once_with((42, (("meter", 1),)))
-        self.assertEqual(result, mock_quant)
-        mock_quant.ito_base_units.assert_called_once()
+        expected_quant = Q.Quantity(42, "meter")
+        self.assertEqual(result, expected_quant)
         mock_logger.debug.assert_called()
 
-    @patch("ltc_client.helpers.q.Quantity.from_tuple")
     @patch("ltc_client.helpers.logger")
-    def test_decode_with_multiple_magnitudes(self, mock_logger, mock_from_tuple):
+    def test_decode_with_multiple_magnitudes(self, mock_logger):
+        """Test decoding of a multi-element array value."""
         # Setup
         enc = {
             "magnitude": [1, 2, 3, 4],
             "shape": (2, 2),
             "units": [{"name": "second", "exponent": -1}],
         }
-        expected_array = np.array([1, 2, 3, 4], dtype=np.float64).reshape((2, 2))
-        mock_quant = CustomMock()
-        mock_from_tuple.return_value = mock_quant
 
         # Execute
         result = decode(enc)
 
         # Verify
-        np.testing.assert_array_equal(
-            mock_from_tuple.call_args[0][0][0], expected_array
-        )
-        self.assertEqual(mock_from_tuple.call_args[0][0][1], (("second", -1),))
-        self.assertEqual(result, mock_quant)
-        mock_quant.ito_base_units.assert_called_once()
+        expected_array = np.array([1, 2, 3, 4], dtype=np.float64).reshape((2, 2))
+        expected_quant = Q.Quantity(expected_array, "1/s")
+        np.testing.assert_array_equal(result.magnitude, expected_quant.magnitude)
+        self.assertEqual(result.units, expected_quant.units)
         mock_logger.debug.assert_called()
+
+    @patch("ltc_client.helpers.logger")
+    def test_decode_with_0d_array_like(self, mock_logger):
+        """Test decoding of a 0-dimensional array-like structure."""
+        # Setup for a 0-d array (scalar)
+        enc = {
+            "magnitude": [42.0],
+            "shape": [],  # This shape is ignored by the scalar path in decode
+            "units": [{"name": "meter", "exponent": 1}],
+        }
+
+        # Execute
+        result = decode(enc)
+
+        # Verify it's treated as a scalar
+        expected_quant = Q.Quantity(42.0, "meter")
+        self.assertEqual(result, expected_quant)
+        self.assertTrue(np.isscalar(result.magnitude))
+        # assert that the assignment to c is possible without warnings or errors
+        b = np.array([[3.14]])
+        c = np.random.rand(10)
+        # This should NOT raise a warning because result.magnitude is a scalar
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")  # Capture all warnings
+            c[0] = result.magnitude
+            # Verify that no warnings were caught
+            self.assertEqual(
+                len(w), 0, "Assignment of scalar magnitude should not raise a warning."
+            )
+
+        # This SHOULD raise a DeprecationWarning for a non-scalar array
+        with self.assertWarns(DeprecationWarning):
+            c[0] = b
+
+    @patch("ltc_client.helpers.logger")
+    def test_decode_with_1_element_array_like(self, mock_logger):
+        """Test decoding of a 1-element array-like structure."""
+        # Setup for a 1-element 1D array
+        enc = {
+            "magnitude": [3.14],
+            "shape": [1],  # This shape is ignored by the scalar path in decode
+            "units": [{"name": "radian", "exponent": 1}],
+        }
+
+        # Execute
+        result = decode(enc)
+
+        # Verify it's treated as a scalar
+        expected_quant = Q.Quantity(3.14, "radian")
+        self.assertEqual(result, expected_quant)
+        self.assertTrue(np.isscalar(result.magnitude))
+        # assert that the assignment to c is possible without warnings or errors
+        b = np.array([[3.14]])
+        c = np.random.rand(10)
+        # This should NOT raise a warning because result.magnitude is a scalar
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")  # Capture all warnings
+            c[0] = result.magnitude
+            # Verify that no warnings were caught
+            self.assertEqual(
+                len(w), 0, "Assignment of scalar magnitude should not raise a warning."
+            )
+
+        # This SHOULD raise a DeprecationWarning for a non-scalar array
+        with self.assertWarns(DeprecationWarning):
+            c[0] = b
 
 
 class TestJobBatchProgressListener(unittest.TestCase):
