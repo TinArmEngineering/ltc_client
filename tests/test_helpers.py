@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import warnings
 import numpy as np
 
-from ltc_client.helpers import decode
+from ltc_client.helpers import decode, encode
 from ltc_client.helpers import Machine, Job, JobBatchProgressListener
 
 from teamcity import is_running_under_teamcity
@@ -118,6 +118,235 @@ class TestDecodeFunction(unittest.TestCase):
         # This SHOULD raise a DeprecationWarning for a non-scalar array
         with self.assertWarns(DeprecationWarning):
             c[0] = b
+
+
+class TestEncodeFunction(unittest.TestCase):
+    """Test the encode function and encode-decode round trips."""
+
+    def test_encode_scalar_quantity(self):
+        """Test encoding a scalar quantity."""
+        # Setup
+        quantity = 42 * Q.meter
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertIn("magnitude", result)
+        self.assertIn("units", result)
+        self.assertIn("shape", result)
+        self.assertEqual(result["magnitude"], [42.0])
+        self.assertEqual(result["shape"], ())
+        self.assertEqual(result["units"], [{"name": "meter", "exponent": 1}])
+
+    def test_encode_array_quantity(self):
+        """Test encoding an array quantity."""
+        # Setup
+        array = np.array([1, 2, 3, 4], dtype=np.float64).reshape((2, 2))
+        quantity = array * Q("1/s")
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertEqual(result["magnitude"], [1.0, 2.0, 3.0, 4.0])
+        self.assertEqual(result["shape"], (2, 2))
+        self.assertEqual(result["units"], [{"name": "second", "exponent": -1}])
+
+    def test_encode_complex_units(self):
+        """Test encoding a quantity with complex compound units."""
+        # Setup
+        quantity = 100 * Q.N * Q.m  # Newton * meter = force * distance
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertIn("magnitude", result)
+        self.assertIn("units", result)
+        self.assertEqual(result["magnitude"], [100.0])
+        # Check that both 'newton' and 'meter' are in the units (order may vary)
+        unit_names = {u["name"] for u in result["units"]}
+        self.assertIn("newton", unit_names)
+        self.assertIn("meter", unit_names)
+
+    def test_encode_dimensionless_quantity(self):
+        """Test encoding a dimensionless quantity (count)."""
+        # Setup
+        quantity = 42 * Q.count
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertEqual(result["magnitude"], [42.0])
+        self.assertEqual(result["shape"], ())
+        self.assertEqual(result["units"], [{"name": "count", "exponent": 1}])
+
+    def test_encode_single_element_array(self):
+        """Test encoding a single-element array quantity."""
+        # Setup
+        array = np.array([3.14])
+        quantity = array * Q.radian
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertEqual(result["magnitude"], [3.14])
+        self.assertEqual(result["shape"], (1,))
+        self.assertEqual(result["units"], [{"name": "radian", "exponent": 1}])
+
+    def test_encode_3d_array(self):
+        """Test encoding a 3D array quantity."""
+        # Setup
+        array = np.arange(24, dtype=np.float64).reshape((2, 3, 4))
+        quantity = array * Q.millimeter
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify structure
+        self.assertEqual(len(result["magnitude"]), 24)
+        self.assertEqual(result["shape"], (2, 3, 4))
+        self.assertEqual(result["units"], [{"name": "millimeter", "exponent": 1}])
+        # Verify magnitude is flattened
+        np.testing.assert_array_equal(
+            result["magnitude"], np.arange(24, dtype=np.float64).tolist()
+        )
+
+    def test_round_trip_encode_decode_scalar(self):
+        """Test encode-decode round trip for scalar quantity."""
+        # Setup
+        original = 42.5 * Q.meter
+
+        # Execute
+        encoded = encode(original)
+        decoded = decode(encoded)
+
+        # Verify
+        self.assertEqual(decoded, original)
+
+    def test_round_trip_encode_decode_array(self):
+        """Test encode-decode round trip for array quantity."""
+        # Setup
+        array = np.array([1.5, 2.5, 3.5, 4.5], dtype=np.float64).reshape((2, 2))
+        original = array * Q("1/s")
+
+        # Execute
+        encoded = encode(original)
+        decoded = decode(encoded)
+
+        # Verify
+        np.testing.assert_array_almost_equal(decoded.magnitude, original.magnitude)
+        self.assertEqual(decoded.units, original.units)
+
+    def test_round_trip_encode_decode_complex_units(self):
+        """Test encode-decode round trip for complex compound units."""
+        # Setup
+        original = 50 * Q.N * Q.m
+
+        # Execute
+        encoded = encode(original)
+        decoded = decode(encoded)
+
+        # Verify (use to_base_units for comparison due to unit simplification)
+        self.assertEqual(decoded.to_base_units(), original.to_base_units())
+
+    def test_round_trip_decode_encode_scalar(self):
+        """Test decode-encode round trip for scalar quantity."""
+        # Setup
+        original_enc = {
+            "magnitude": [42.0],
+            "shape": (),
+            "units": [{"name": "meter", "exponent": 1}],
+        }
+
+        # Execute
+        decoded = decode(original_enc)
+        encoded = encode(decoded)
+
+        # Verify
+        self.assertEqual(encoded["magnitude"], original_enc["magnitude"])
+        self.assertEqual(encoded["shape"], original_enc["shape"])
+        self.assertEqual(encoded["units"], original_enc["units"])
+
+    def test_round_trip_decode_encode_array(self):
+        """Test decode-encode round trip for array quantity."""
+        # Setup
+        original_enc = {
+            "magnitude": [1.0, 2.0, 3.0, 4.0],
+            "shape": (2, 2),
+            "units": [{"name": "second", "exponent": -1}],
+        }
+
+        # Execute
+        decoded = decode(original_enc)
+        encoded = encode(decoded)
+
+        # Verify
+        self.assertEqual(encoded["magnitude"], original_enc["magnitude"])
+        self.assertEqual(encoded["shape"], original_enc["shape"])
+        self.assertEqual(encoded["units"], original_enc["units"])
+
+    def test_round_trip_decode_encode_3d_array(self):
+        """Test decode-encode round trip for 3D array quantity."""
+        # Setup
+        magnitude_list = list(np.arange(24, dtype=np.float64))
+        original_enc = {
+            "magnitude": magnitude_list,
+            "shape": (2, 3, 4),
+            "units": [{"name": "millimeter", "exponent": 1}],
+        }
+
+        # Execute
+        decoded = decode(original_enc)
+        encoded = encode(decoded)
+
+        # Verify
+        self.assertEqual(encoded["magnitude"], original_enc["magnitude"])
+        self.assertEqual(encoded["shape"], original_enc["shape"])
+        self.assertEqual(encoded["units"], original_enc["units"])
+
+    def test_encode_preserves_magnitude_precision(self):
+        """Test that encode preserves floating-point precision."""
+        # Setup
+        original = 3.141592653589793 * Q.meter
+
+        # Execute
+        encoded = encode(original)
+
+        # Verify
+        self.assertAlmostEqual(encoded["magnitude"][0], 3.141592653589793)
+
+    def test_encode_negative_exponent_units(self):
+        """Test encoding quantities with negative exponent units."""
+        # Setup
+        quantity = 10 * Q.meter / Q.second
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify
+        self.assertEqual(result["magnitude"], [10.0])
+        # Check for meter with exponent 1 and second with exponent -1
+        units_dict = {u["name"]: u["exponent"] for u in result["units"]}
+        self.assertEqual(units_dict.get("meter"), 1)
+        self.assertEqual(units_dict.get("second"), -1)
+
+    def test_encode_multiple_same_units(self):
+        """Test encoding quantities with multiple instances of same unit (e.g., m²)."""
+        # Setup
+        quantity = 25 * Q.meter**2
+
+        # Execute
+        result = encode(quantity)
+
+        # Verify
+        self.assertEqual(result["magnitude"], [25.0])
+        # Should have meter with exponent 2
+        units_dict = {u["name"]: u["exponent"] for u in result["units"]}
+        self.assertEqual(units_dict.get("meter"), 2)
 
 
 class TestJobBatchProgressListener(unittest.TestCase):

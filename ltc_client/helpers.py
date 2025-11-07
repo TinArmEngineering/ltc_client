@@ -50,7 +50,7 @@ def decode(enc: dict) -> "pint.Quantity":
 
     try:
         quant: "pint.Quantity" = q.Quantity.from_tuple(enc_tuple)
-        quant.ito_base_units()
+        # quant.ito_base_units()
     except Exception as exc:
         logger.error(
             "Error decoding %s with units %s: %s",
@@ -62,6 +62,41 @@ def decode(enc: dict) -> "pint.Quantity":
 
     logger.debug("convert %s -> %s", enc, quant)
     return quant
+
+
+def encode(quantity: "pint.Quantity") -> dict:
+    """Encode a pint.Quantity object into a serializable dict
+
+    Parameters
+    ----------
+    quantity : pint.Quantity
+        The quantity to encode
+
+    Returns
+    -------
+    dict
+        The encoded quantity object
+    """
+
+    units_list = []
+    for unit_name, exponent in quantity.units._units.items():
+        units_list.append({"name": unit_name, "exponent": exponent})
+
+    if isinstance(quantity.magnitude, np.ndarray):
+        magnitude_list = quantity.magnitude.flatten().tolist()
+        shape = quantity.magnitude.shape
+    else:
+        magnitude_list = [float(quantity.magnitude)]
+        shape = ()
+
+    enc = {
+        "magnitude": magnitude_list,
+        "units": units_list,
+        "shape": shape,
+    }
+
+    logger.debug("convert %s -> %s", quantity, enc)
+    return enc
 
 
 class Machine(object):

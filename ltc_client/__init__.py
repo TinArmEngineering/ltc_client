@@ -2,7 +2,7 @@
 
 # from ltc_client.worker import StandardWorker, DefaultIdLogFilter, HostnameFilter
 from ltc_client.api import Api, NameQuantityPair, Quantity, Unit, Log
-from ltc_client.helpers import Machine, Job, Material, decode
+from ltc_client.helpers import Machine, Job, Material, decode, encode
 from ltc_client.winding_api import WindingApi
 
 
