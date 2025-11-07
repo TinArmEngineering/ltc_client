@@ -2,6 +2,9 @@ import pytest
 import requests
 from unittest.mock import Mock, patch
 from ltc_client.winding_api import WindingApi
+import pint
+
+Q = pint.get_application_registry()
 
 
 @pytest.fixture
@@ -120,3 +123,92 @@ def test_api_request_error(winding_api):
 
         with pytest.raises(requests.exceptions.RequestException):
             winding_api.create_winding({"param": "value"})
+
+
+def test_get_circle_packing_max_diameter(winding_api, mock_response):
+    """Test get_circle_packing_max_diameter successfully returns diameter and centers."""
+    with patch("requests.request", return_value=mock_response) as mock_request:
+        mock_response.json.return_value = {
+            "centers": [[31.67, -2.44], [35.86, -3.38]],
+            "max_diameter": 4.28,
+        }
+
+        geom_dict = {
+            "slot_area": {
+                # Simplified points list containing only referenced vertices
+                "points": [
+                    [26.032597975719533, 0],  # old index 18
+                    [38.19882197136452, -0.3],  # old index 19
+                    [37.75306092902646, -5.826353103719018],  # old index 20
+                    [37.254213301257415, -6.151714501211407],  # old index 21
+                    [27.12185524186896, -3.4367573417752926],  # old index 22
+                    [26.849505811595606, -3.187195068589932],  # old index 23
+                    [26.332597975719533, -1.767002461581272],  # old index 24
+                    [26.332597975719533, -0.3],  # old index 25
+                ],
+                # Re-indexed path
+                "path": [
+                    [
+                        [7, 6, -1],
+                        [6, 5, -1],
+                        [5, 4, -1],
+                        [4, 3, -1],
+                        [3, 2, -1],
+                        [2, 1, -1],
+                        [1, 0, -1],
+                        [0, 7, -1],
+                    ]
+                ],
+                "svg_path": "",
+                "units": "mm",
+                "classes": "winding conductor_0",
+                "construction_circles": [],
+                "neighbouring_part_hint": [],
+                "area": 51.99102437460619,
+            }
+        }
+
+        n = 25
+
+        diameter, centers = winding_api.get_circle_packing_max_diameter(geom_dict, n)
+
+        expected_payload = {"geometry": geom_dict["slot_area"], "n": n}
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{winding_api.api_url}/packing/max_diameter",
+            headers={},
+            json=expected_payload,
+        )
+
+        assert diameter == 4.28 * Q.mm
+        assert centers == [[31.67, -2.44], [35.86, -3.38]]
+
+
+def test_get_circle_packing_max_number(winding_api, mock_response):
+    """Test get_circle_packing_max_number successfully returns number and centers."""
+    with patch("requests.request", return_value=mock_response) as mock_request:
+        mock_response.json.return_value = {
+            "max_number": 5,
+            "centers": [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8], [0.9, 1.0]],
+        }
+
+        geom_dict = {"slot_area": {"shape": "circle", "radius": 10}}
+        diameter_to_pack = 1.5 * Q.mm
+
+        max_number, centers = winding_api.get_circle_packing_max_number(
+            geom_dict, diameter=diameter_to_pack
+        )
+
+        expected_payload = {
+            "geometry": geom_dict["slot_area"],
+            "d": diameter_to_pack.to("mm").magnitude,
+        }
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{winding_api.api_url}/packing/max_number",
+            headers={},
+            json=expected_payload,
+        )
+
+        assert max_number == 5
+        assert len(centers) == 5

@@ -1,6 +1,9 @@
 import logging
 import requests
 from ltc_client.api import Quantity
+import pint
+
+Q = pint.get_application_registry()
 
 ### Configure Logging
 LOGGING_LEVEL = logging.INFO
@@ -109,3 +112,35 @@ class WindingApi:
         response.raise_for_status()
         winding_netlist = response.json()
         return winding_netlist
+
+    def get_circle_packing_max_diameter(self, geom_dict, n=1, part="slot_area"):
+        headers = {}
+        data_payload = {"geometry": geom_dict[part], "n": n}
+        response = requests.request(
+            "POST",
+            f"{self.api_url}/packing/max_diameter",
+            headers=headers,
+            json=data_payload,
+        )
+        response.raise_for_status()
+        circle_packing = response.json()
+        return circle_packing["max_diameter"] * Q.mm, circle_packing["centers"]
+
+    def get_circle_packing_max_number(
+        self,
+        geom_dict,
+        diameter=1.0 * Q.mm,
+        part="slot_area",
+    ):
+        headers = {}
+        data_payload = {"geometry": geom_dict[part], "d": diameter.to("mm").magnitude}
+        response = requests.request(
+            "POST",
+            f"{self.api_url}/packing/max_number",
+            headers=headers,
+            json=data_payload,
+        )
+        response.raise_for_status()
+        circle_packing = response.json()
+
+        return circle_packing["max_number"], circle_packing["centers"]

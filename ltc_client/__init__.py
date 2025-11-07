@@ -4,6 +4,7 @@
 from ltc_client.api import Api, NameQuantityPair, Quantity, Unit, Log
 from ltc_client.helpers import Machine, Job, Material, decode, encode
 from ltc_client.winding_api import WindingApi
+from ltc_client.geometry_api import GeometryApi
 
 
 __title__ = "TINARM - Node creation tool for TAE workers"
