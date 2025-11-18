@@ -84,6 +84,18 @@ connection = make_connection(config["stomp"])
 
 Development with Poetry https://python-poetry.org/docs/basic-usage/
 
+Before starting development:
+```bash
+sudo apt install pipx
+pipx install poetry
+pipx ensurepath
+
+# restart terminal
+
+poetry config virtualenvs.in-project true
+poetry install --with test,dev
+```
+
 Before committing:
 
 Check the formatting is compient with Black:

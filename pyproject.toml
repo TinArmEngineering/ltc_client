@@ -39,6 +39,7 @@ Repository = "https://github.com/TinArmEngineering/ltc_client/"
 
 [tool.poetry]
 version = "0.0.0"
+
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
 pytest = "^8.4.2"

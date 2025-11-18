@@ -8,7 +8,16 @@ from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
 
 import ltc_client
-from ltc_client import Api, NameQuantityPair, Quantity, Unit, Log, Material, decode
+from ltc_client import (
+    Api,
+    NameQuantityPair,
+    Quantity,
+    Unit,
+    Log,
+    Material,
+    Cluster,
+    decode,
+)
 
 NODE_ID = "testnode"
 ROOT_URL = "http://example.com"
@@ -417,6 +426,149 @@ class MaterialTestCase(unittest.TestCase):
                 }
             ],
         }
+
+
+class ClusterTestCase(unittest.TestCase):
+    def setUp(self):
+        self.session_patcher = mock.patch("ltc_client.api.requests.Session")
+        self.MockSession = self.session_patcher.start()
+        self.mock_session = self.MockSession.return_value
+        self.api = ltc_client.Api(
+            root_url=ROOT_URL, api_key=API_KEY, org_id=ORG_ID, node_id=NODE_ID
+        )
+
+    def tearDown(self):
+        self.session_patcher.stop()
+
+    def test_create_cluster(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.post.return_value = mock_response
+
+        cluster = ltc_client.Cluster(
+            id="cluster1",
+            name="TestCluster",
+            last_seen="2024-01-01T12:00:00Z",
+            nodes=5,
+        )
+
+        self.api.create_cluster(cluster)
+        self.mock_session.post.assert_called_with(
+            url=f"{ROOT_URL}/clusters",
+            params={},
+            json={
+                "id": "cluster1",
+                "name": "TestCluster",
+                "last_seen": "2024-01-01T12:00:00Z",
+                "nodes": 5,
+            },
+        )
+
+    def update_cluster(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.put.return_value = mock_response
+
+        cluster = ltc_client.Cluster(
+            id="cluster1",
+            name="TestCluster",
+            last_seen="2024-01-01T12:00:00Z",
+            nodes=5,
+        )
+
+        self.api.update_cluster(cluster)
+        self.mock_session.put.assert_called_with(
+            url=f"{ROOT_URL}/clusters/cluster1",
+            json={
+                "id": "cluster1",
+                "name": "TestCluster",
+                "last_seen": "2024-01-01T12:00:00Z",
+                "nodes": 5,
+            },
+        )
+
+    def test_get_clusters(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "clusters": [
+                {
+                    "id": "cluster1",
+                    "name": "TestCluster1",
+                    "last_seen": "2024-01-01T12:00:00Z",
+                    "nodes": 1,
+                },
+                {
+                    "id": "cluster2",
+                    "name": "TestCluster2",
+                    "last_seen": "2024-01-02T12:00:00Z",
+                    "nodes": 3,
+                },
+            ]
+        }
+        self.mock_session.get.return_value = mock_response
+        clusters = self.api.get_clusters()
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/clusters",
+        )
+        self.assertEqual(len(clusters), 2)
+        self.assertEqual(clusters[0].id, "cluster1")
+        self.assertEqual(clusters[0].name, "TestCluster1")
+        self.assertEqual(clusters[0].last_seen, "2024-01-01T12:00:00Z")
+        self.assertEqual(clusters[0].nodes, 1)
+        self.assertEqual(clusters[1].id, "cluster2")
+        self.assertEqual(clusters[1].name, "TestCluster2")
+        self.assertEqual(clusters[1].last_seen, "2024-01-02T12:00:00Z")
+        self.assertEqual(clusters[1].nodes, 3)
+
+    def test_get_cluster(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "cluster1",
+            "name": "TestCluster1",
+            "last_seen": "2024-01-01T12:00:00Z",
+            "nodes": 1,
+        }
+        self.mock_session.get.return_value = mock_response
+        cluster = self.api.get_cluster("cluster1")
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/clusters/cluster1",
+        )
+        self.assertEqual(cluster.id, "cluster1")
+        self.assertEqual(cluster.name, "TestCluster1")
+        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
+        self.assertEqual(cluster.nodes, 1)
+
+    def test_get_cluster_by_name(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "cluster1",
+            "name": "TestCluster1",
+            "last_seen": "2024-01-01T12:00:00Z",
+            "nodes": 1,
+        }
+
+        self.mock_session.get.return_value = mock_response
+        cluster = self.api.get_cluster_by_name("TestCluster1")
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/clusters/name/TestCluster1",
+        )
+        self.assertEqual(cluster.id, "cluster1")
+        self.assertEqual(cluster.name, "TestCluster1")
+        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
+        self.assertEqual(cluster.nodes, 1)
+
+    def test_delete_cluster(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        self.mock_session.delete.return_value = mock_response
+
+        self.api.delete_cluster("cluster1")
+        self.mock_session.delete.assert_called_with(
+            url=f"{ROOT_URL}/clusters/cluster1",
+        )
 
 
 if __name__ == "__main__":

@@ -154,6 +154,22 @@ class NameQuantityPair:
         }
 
 
+class Cluster:
+    def __init__(self, id: str, name: str, last_seen: str = None, nodes: int = 1):
+        self.id = id
+        self.name = name
+        self.last_seen = last_seen
+        self.nodes = nodes
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "last_seen": self.last_seen,
+            "nodes": self.nodes,
+        }
+
+
 class Api:
     """
     The TAE API
@@ -436,3 +452,93 @@ class Api:
         )
         response.raise_for_status()
         return response.json()
+
+    def create_cluster(self, cluster: Cluster):
+        """
+        Create a cluster for the TAE API
+        """
+        response = self._session.post(
+            url=f"{self._root_url}/clusters",
+            json=cluster.to_dict(),
+            params={},
+        )
+        response.raise_for_status()
+        if response.status_code == 200:
+            cluster.id = response.json()["id"]
+        return response.json()
+
+    def update_cluster(self, cluster: Cluster):
+        """
+        Update a cluster for the TAE API
+        """
+        response = self._session.put(
+            url=f"{self._root_url}/clusters/{cluster.id}",
+            json=cluster.to_dict(),
+            params={},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_clusters(self):
+        """
+        Get all clusters from the TAE API
+        """
+        response = self._session.get(
+            url=f"{self._root_url}/clusters",
+        )
+        response.raise_for_status()
+        data = response.json()
+        clusters = []
+        for item in data["clusters"]:
+            clusters.append(
+                Cluster(
+                    name=item["name"],
+                    id=item["id"],
+                    last_seen=item["last_seen"],
+                    nodes=item["nodes"],
+                )
+            )
+        return clusters
+
+    def get_cluster(self, cluster_id):
+        """
+        Get a cluster from the TAE API
+        """
+        response = self._session.get(
+            url=f"{self._root_url}/clusters/{cluster_id}",
+        )
+        response.raise_for_status()
+        data = response.json()
+        return Cluster(
+            name=data["name"],
+            id=data["id"],
+            last_seen=data["last_seen"],
+            nodes=data["nodes"],
+        )
+
+    def get_cluster_by_name(self, cluster_name):
+        """
+        Get a cluster by name from the TAE API
+        """
+
+        response = self._session.get(
+            url=f"{self._root_url}/clusters/name/{cluster_name}",
+        )
+        response.raise_for_status()
+        data = response.json()
+        return Cluster(
+            name=data["name"],
+            id=data["id"],
+            last_seen=data["last_seen"],
+            nodes=data["nodes"],
+        )
+
+    def delete_cluster(self, cluster_id):
+        """
+        Delete a cluster
+        """
+        response = self._session.delete(
+            url=f"{self._root_url}/clusters/{cluster_id}",
+        )
+        response.raise_for_status()
+        return
