@@ -155,18 +155,18 @@ class NameQuantityPair:
 
 
 class Cluster:
-    def __init__(self, id: str, name: str, last_seen: str = None, nodes: int = 1):
+    def __init__(self, id: str, name: str, last_seen: str = None, node_count: int = 1):
         self.id = id
         self.name = name
         self.last_seen = last_seen
-        self.nodes = nodes
+        self.node_count = node_count
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "last_seen": self.last_seen,
-            "nodes": self.nodes,
+            "node_count": self.node_count,
         }
 
 
@@ -495,7 +495,7 @@ class Api:
                     name=item["name"],
                     id=item["id"],
                     last_seen=item["last_seen"],
-                    nodes=item["nodes"],
+                    node_count=item["node_count"],
                 )
             )
         return clusters
@@ -513,7 +513,7 @@ class Api:
             name=data["name"],
             id=data["id"],
             last_seen=data["last_seen"],
-            nodes=data["nodes"],
+            node_count=data["node_count"],
         )
 
     def get_cluster_by_name(self, cluster_name):
@@ -530,7 +530,7 @@ class Api:
             name=data["name"],
             id=data["id"],
             last_seen=data["last_seen"],
-            nodes=data["nodes"],
+            node_count=data["node_count"],
         )
 
     def delete_cluster(self, cluster_id):

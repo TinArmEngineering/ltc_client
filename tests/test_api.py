@@ -449,7 +449,7 @@ class ClusterTestCase(unittest.TestCase):
             id="cluster1",
             name="TestCluster",
             last_seen="2024-01-01T12:00:00Z",
-            nodes=5,
+            node_count=5,
         )
 
         self.api.create_cluster(cluster)
@@ -460,7 +460,7 @@ class ClusterTestCase(unittest.TestCase):
                 "id": "cluster1",
                 "name": "TestCluster",
                 "last_seen": "2024-01-01T12:00:00Z",
-                "nodes": 5,
+                "node_count": 5,
             },
         )
 
@@ -473,7 +473,7 @@ class ClusterTestCase(unittest.TestCase):
             id="cluster1",
             name="TestCluster",
             last_seen="2024-01-01T12:00:00Z",
-            nodes=5,
+            node_count=5,
         )
 
         self.api.update_cluster(cluster)
@@ -483,7 +483,7 @@ class ClusterTestCase(unittest.TestCase):
                 "id": "cluster1",
                 "name": "TestCluster",
                 "last_seen": "2024-01-01T12:00:00Z",
-                "nodes": 5,
+                "node_count": 5,
             },
         )
 
@@ -496,13 +496,13 @@ class ClusterTestCase(unittest.TestCase):
                     "id": "cluster1",
                     "name": "TestCluster1",
                     "last_seen": "2024-01-01T12:00:00Z",
-                    "nodes": 1,
+                    "node_count": 1,
                 },
                 {
                     "id": "cluster2",
                     "name": "TestCluster2",
                     "last_seen": "2024-01-02T12:00:00Z",
-                    "nodes": 3,
+                    "node_count": 3,
                 },
             ]
         }
@@ -515,11 +515,11 @@ class ClusterTestCase(unittest.TestCase):
         self.assertEqual(clusters[0].id, "cluster1")
         self.assertEqual(clusters[0].name, "TestCluster1")
         self.assertEqual(clusters[0].last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(clusters[0].nodes, 1)
+        self.assertEqual(clusters[0].node_count, 1)
         self.assertEqual(clusters[1].id, "cluster2")
         self.assertEqual(clusters[1].name, "TestCluster2")
         self.assertEqual(clusters[1].last_seen, "2024-01-02T12:00:00Z")
-        self.assertEqual(clusters[1].nodes, 3)
+        self.assertEqual(clusters[1].node_count, 3)
 
     def test_get_cluster(self):
         mock_response = mock.MagicMock()
@@ -528,7 +528,7 @@ class ClusterTestCase(unittest.TestCase):
             "id": "cluster1",
             "name": "TestCluster1",
             "last_seen": "2024-01-01T12:00:00Z",
-            "nodes": 1,
+            "node_count": 1,
         }
         self.mock_session.get.return_value = mock_response
         cluster = self.api.get_cluster("cluster1")
@@ -538,7 +538,7 @@ class ClusterTestCase(unittest.TestCase):
         self.assertEqual(cluster.id, "cluster1")
         self.assertEqual(cluster.name, "TestCluster1")
         self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(cluster.nodes, 1)
+        self.assertEqual(cluster.node_count, 1)
 
     def test_get_cluster_by_name(self):
         mock_response = mock.MagicMock()
@@ -547,7 +547,7 @@ class ClusterTestCase(unittest.TestCase):
             "id": "cluster1",
             "name": "TestCluster1",
             "last_seen": "2024-01-01T12:00:00Z",
-            "nodes": 1,
+            "node_count": 1,
         }
 
         self.mock_session.get.return_value = mock_response
@@ -558,7 +558,7 @@ class ClusterTestCase(unittest.TestCase):
         self.assertEqual(cluster.id, "cluster1")
         self.assertEqual(cluster.name, "TestCluster1")
         self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(cluster.nodes, 1)
+        self.assertEqual(cluster.node_count, 1)
 
     def test_delete_cluster(self):
         mock_response = mock.MagicMock()
