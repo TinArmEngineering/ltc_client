@@ -448,8 +448,12 @@ class ClusterTestCase(unittest.TestCase):
         cluster = ltc_client.Cluster(
             id="cluster1",
             name="TestCluster",
-            last_seen="2024-01-01T12:00:00Z",
             node_count=5,
+            total_cpu_cores=20,
+            allocatable_cpu_cores=15,
+            total_memory_bytes=64 * 1024**3,
+            allocatable_memory_bytes=48 * 1024**3,
+            last_seen="2024-01-01T12:00:00Z",
         )
 
         self.api.create_cluster(cluster)
@@ -459,106 +463,106 @@ class ClusterTestCase(unittest.TestCase):
             json={
                 "id": "cluster1",
                 "name": "TestCluster",
-                "last_seen": "2024-01-01T12:00:00Z",
                 "node_count": 5,
+                "total_cpu_cores": 20,
+                "allocatable_cpu_cores": 15,
+                "total_memory_bytes": 64 * 1024**3,
+                "allocatable_memory_bytes": 48 * 1024**3,
+                "last_seen": "2024-01-01T12:00:00Z",
             },
         )
 
-    def update_cluster(self):
+    def test_update_cluster(self):
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
         self.mock_session.put.return_value = mock_response
 
         cluster = ltc_client.Cluster(
             id="cluster1",
-            name="TestCluster",
-            last_seen="2024-01-01T12:00:00Z",
-            node_count=5,
+            name="UpdatedCluster",
+            node_count=6,
+            total_cpu_cores=24,
+            allocatable_cpu_cores=18,
+            total_memory_bytes=128 * 1024**3,
+            allocatable_memory_bytes=96 * 1024**3,
+            last_seen="2024-01-02T12:00:00Z",
         )
 
         self.api.update_cluster(cluster)
         self.mock_session.put.assert_called_with(
             url=f"{ROOT_URL}/clusters/cluster1",
+            params={},
             json={
                 "id": "cluster1",
-                "name": "TestCluster",
-                "last_seen": "2024-01-01T12:00:00Z",
-                "node_count": 5,
+                "name": "UpdatedCluster",
+                "node_count": 6,
+                "total_cpu_cores": 24,
+                "allocatable_cpu_cores": 18,
+                "total_memory_bytes": 128 * 1024**3,
+                "allocatable_memory_bytes": 96 * 1024**3,
+                "last_seen": "2024-01-02T12:00:00Z",
             },
         )
-
-    def test_get_clusters(self):
-        mock_response = mock.MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "clusters": [
-                {
-                    "id": "cluster1",
-                    "name": "TestCluster1",
-                    "last_seen": "2024-01-01T12:00:00Z",
-                    "node_count": 1,
-                },
-                {
-                    "id": "cluster2",
-                    "name": "TestCluster2",
-                    "last_seen": "2024-01-02T12:00:00Z",
-                    "node_count": 3,
-                },
-            ]
-        }
-        self.mock_session.get.return_value = mock_response
-        clusters = self.api.get_clusters()
-        self.mock_session.get.assert_called_with(
-            url=f"{ROOT_URL}/clusters",
-        )
-        self.assertEqual(len(clusters), 2)
-        self.assertEqual(clusters[0].id, "cluster1")
-        self.assertEqual(clusters[0].name, "TestCluster1")
-        self.assertEqual(clusters[0].last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(clusters[0].node_count, 1)
-        self.assertEqual(clusters[1].id, "cluster2")
-        self.assertEqual(clusters[1].name, "TestCluster2")
-        self.assertEqual(clusters[1].last_seen, "2024-01-02T12:00:00Z")
-        self.assertEqual(clusters[1].node_count, 3)
 
     def test_get_cluster(self):
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "id": "cluster1",
-            "name": "TestCluster1",
+            "name": "TestCluster",
+            "node_count": 5,
+            "total_cpu_cores": 20,
+            "allocatable_cpu_cores": 15,
+            "total_memory_bytes": 64 * 1024**3,
+            "allocatable_memory_bytes": 48 * 1024**3,
             "last_seen": "2024-01-01T12:00:00Z",
-            "node_count": 1,
         }
+
         self.mock_session.get.return_value = mock_response
+
         cluster = self.api.get_cluster("cluster1")
         self.mock_session.get.assert_called_with(
             url=f"{ROOT_URL}/clusters/cluster1",
         )
-        self.assertEqual(cluster.id, "cluster1")
-        self.assertEqual(cluster.name, "TestCluster1")
-        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(cluster.node_count, 1)
+
+        self.assertEqual(cluster["id"], "cluster1")
+        self.assertEqual(cluster["name"], "TestCluster")
+        self.assertEqual(cluster["node_count"], 5)
+        self.assertEqual(cluster["total_cpu_cores"], 20)
+        self.assertEqual(cluster["allocatable_cpu_cores"], 15)
+        self.assertEqual(cluster["total_memory_bytes"], 64 * 1024**3)
+        self.assertEqual(cluster["allocatable_memory_bytes"], 48 * 1024**3)
+        self.assertEqual(cluster["last_seen"], "2024-01-01T12:00:00Z")
 
     def test_get_cluster_by_name(self):
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "id": "cluster1",
-            "name": "TestCluster1",
+            "name": "TestCluster",
+            "node_count": 5,
+            "total_cpu_cores": 20,
+            "allocatable_cpu_cores": 15,
+            "total_memory_bytes": 64 * 1024**3,
+            "allocatable_memory_bytes": 48 * 1024**3,
             "last_seen": "2024-01-01T12:00:00Z",
-            "node_count": 1,
         }
 
         self.mock_session.get.return_value = mock_response
-        cluster = self.api.get_cluster_by_name("TestCluster1")
+
+        cluster = self.api.get_cluster_by_name("TestCluster")
         self.mock_session.get.assert_called_with(
-            url=f"{ROOT_URL}/clusters/name/TestCluster1",
+            url=f"{ROOT_URL}/clusters/name/TestCluster",
         )
-        self.assertEqual(cluster.id, "cluster1")
-        self.assertEqual(cluster.name, "TestCluster1")
-        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
-        self.assertEqual(cluster.node_count, 1)
+
+        self.assertEqual(cluster["id"], "cluster1")
+        self.assertEqual(cluster["name"], "TestCluster")
+        self.assertEqual(cluster["node_count"], 5)
+        self.assertEqual(cluster["total_cpu_cores"], 20)
+        self.assertEqual(cluster["allocatable_cpu_cores"], 15)
+        self.assertEqual(cluster["total_memory_bytes"], 64 * 1024**3)
+        self.assertEqual(cluster["allocatable_memory_bytes"], 48 * 1024**3)
+        self.assertEqual(cluster["last_seen"], "2024-01-01T12:00:00Z")
 
     def test_delete_cluster(self):
         mock_response = mock.MagicMock()

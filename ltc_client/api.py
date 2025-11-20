@@ -155,18 +155,36 @@ class NameQuantityPair:
 
 
 class Cluster:
-    def __init__(self, id: str, name: str, last_seen: str = None, node_count: int = 1):
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        node_count: int,
+        total_cpu_cores: int,
+        allocatable_cpu_cores: int,
+        total_memory_bytes: int,
+        allocatable_memory_bytes: int,
+        last_seen: str = None,
+    ):
         self.id = id
         self.name = name
-        self.last_seen = last_seen
         self.node_count = node_count
+        self.total_cpu_cores = total_cpu_cores
+        self.allocatable_cpu_cores = allocatable_cpu_cores
+        self.total_memory_bytes = total_memory_bytes
+        self.allocatable_memory_bytes = allocatable_memory_bytes
+        self.last_seen = last_seen
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
-            "last_seen": self.last_seen,
             "node_count": self.node_count,
+            "total_cpu_cores": self.total_cpu_cores,
+            "allocatable_cpu_cores": self.allocatable_cpu_cores,
+            "total_memory_bytes": self.total_memory_bytes,
+            "allocatable_memory_bytes": self.allocatable_memory_bytes,
+            "last_seen": self.last_seen,
         }
 
 
@@ -487,18 +505,7 @@ class Api:
             url=f"{self._root_url}/clusters",
         )
         response.raise_for_status()
-        data = response.json()
-        clusters = []
-        for item in data["clusters"]:
-            clusters.append(
-                Cluster(
-                    name=item["name"],
-                    id=item["id"],
-                    last_seen=item["last_seen"],
-                    node_count=item["node_count"],
-                )
-            )
-        return clusters
+        return response.json()
 
     def get_cluster(self, cluster_id):
         """
@@ -508,13 +515,7 @@ class Api:
             url=f"{self._root_url}/clusters/{cluster_id}",
         )
         response.raise_for_status()
-        data = response.json()
-        return Cluster(
-            name=data["name"],
-            id=data["id"],
-            last_seen=data["last_seen"],
-            node_count=data["node_count"],
-        )
+        return response.json()
 
     def get_cluster_by_name(self, cluster_name):
         """
@@ -525,13 +526,7 @@ class Api:
             url=f"{self._root_url}/clusters/name/{cluster_name}",
         )
         response.raise_for_status()
-        data = response.json()
-        return Cluster(
-            name=data["name"],
-            id=data["id"],
-            last_seen=data["last_seen"],
-            node_count=data["node_count"],
-        )
+        return response.json()
 
     def delete_cluster(self, cluster_id):
         """
