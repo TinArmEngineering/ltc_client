@@ -159,11 +159,11 @@ class Cluster:
         self,
         id: str,
         name: str,
-        node_count: int,
-        total_cpu_cores: int,
-        allocatable_cpu_cores: int,
-        total_memory_bytes: int,
-        allocatable_memory_bytes: int,
+        node_count: int = 0,
+        total_cpu_cores: int = 0,
+        allocatable_cpu_cores: int = 0,
+        total_memory_bytes: int = 0,
+        allocatable_memory_bytes: int = 0,
         last_seen: str = None,
     ):
         self.id = id
@@ -186,6 +186,22 @@ class Cluster:
             "allocatable_memory_bytes": self.allocatable_memory_bytes,
             "last_seen": self.last_seen,
         }
+
+    def to_api(self):
+        return self.to_dict()
+
+    @staticmethod
+    def from_dict(data: dict) -> "Cluster":
+        return Cluster(
+            id=data.get("id"),
+            name=data.get("name"),
+            node_count=data.get("node_count"),
+            total_cpu_cores=data.get("total_cpu_cores"),
+            allocatable_cpu_cores=data.get("allocatable_cpu_cores"),
+            total_memory_bytes=data.get("total_memory_bytes"),
+            allocatable_memory_bytes=data.get("allocatable_memory_bytes"),
+            last_seen=data.get("last_seen"),
+        )
 
 
 class Api:
@@ -481,14 +497,17 @@ class Api:
             params={},
         )
         response.raise_for_status()
-        if response.status_code == 200:
-            cluster.id = response.json()["id"]
-        return response.json()
+        return Cluster.from_dict(response.json())
 
     def update_cluster(self, cluster: Cluster):
         """
         Update a cluster for the TAE API
         """
+
+        # Check that cluster has an ID
+        if not cluster.id:
+            raise ValueError("Cluster must have an ID to be updated")
+
         response = self._session.put(
             url=f"{self._root_url}/clusters/{cluster.id}",
             json=cluster.to_dict(),
@@ -505,7 +524,7 @@ class Api:
             url=f"{self._root_url}/clusters",
         )
         response.raise_for_status()
-        return response.json()
+        return [Cluster.from_dict(c) for c in response.json()]
 
     def get_cluster(self, cluster_id):
         """
@@ -515,18 +534,17 @@ class Api:
             url=f"{self._root_url}/clusters/{cluster_id}",
         )
         response.raise_for_status()
-        return response.json()
+        return Cluster.from_dict(response.json())
 
     def get_cluster_by_name(self, cluster_name):
         """
         Get a cluster by name from the TAE API
         """
-
         response = self._session.get(
             url=f"{self._root_url}/clusters/name/{cluster_name}",
         )
         response.raise_for_status()
-        return response.json()
+        return Cluster.from_dict(response.json())
 
     def delete_cluster(self, cluster_id):
         """

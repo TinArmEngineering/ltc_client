@@ -504,6 +504,15 @@ class ClusterTestCase(unittest.TestCase):
             },
         )
 
+    def test_update_cluster_no_id(self):
+        cluster = ltc_client.Cluster(
+            id=None,
+            name="UpdatedCluster",
+        )
+
+        with self.assertRaises(ValueError):
+            self.api.update_cluster(cluster)
+
     def test_get_cluster(self):
         mock_response = mock.MagicMock()
         mock_response.status_code = 200
@@ -525,14 +534,14 @@ class ClusterTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/clusters/cluster1",
         )
 
-        self.assertEqual(cluster["id"], "cluster1")
-        self.assertEqual(cluster["name"], "TestCluster")
-        self.assertEqual(cluster["node_count"], 5)
-        self.assertEqual(cluster["total_cpu_cores"], 20)
-        self.assertEqual(cluster["allocatable_cpu_cores"], 15)
-        self.assertEqual(cluster["total_memory_bytes"], 64 * 1024**3)
-        self.assertEqual(cluster["allocatable_memory_bytes"], 48 * 1024**3)
-        self.assertEqual(cluster["last_seen"], "2024-01-01T12:00:00Z")
+        self.assertEqual(cluster.id, "cluster1")
+        self.assertEqual(cluster.name, "TestCluster")
+        self.assertEqual(cluster.node_count, 5)
+        self.assertEqual(cluster.total_cpu_cores, 20)
+        self.assertEqual(cluster.allocatable_cpu_cores, 15)
+        self.assertEqual(cluster.total_memory_bytes, 64 * 1024**3)
+        self.assertEqual(cluster.allocatable_memory_bytes, 48 * 1024**3)
+        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
 
     def test_get_cluster_by_name(self):
         mock_response = mock.MagicMock()
@@ -555,14 +564,14 @@ class ClusterTestCase(unittest.TestCase):
             url=f"{ROOT_URL}/clusters/name/TestCluster",
         )
 
-        self.assertEqual(cluster["id"], "cluster1")
-        self.assertEqual(cluster["name"], "TestCluster")
-        self.assertEqual(cluster["node_count"], 5)
-        self.assertEqual(cluster["total_cpu_cores"], 20)
-        self.assertEqual(cluster["allocatable_cpu_cores"], 15)
-        self.assertEqual(cluster["total_memory_bytes"], 64 * 1024**3)
-        self.assertEqual(cluster["allocatable_memory_bytes"], 48 * 1024**3)
-        self.assertEqual(cluster["last_seen"], "2024-01-01T12:00:00Z")
+        self.assertEqual(cluster.id, "cluster1")
+        self.assertEqual(cluster.name, "TestCluster")
+        self.assertEqual(cluster.node_count, 5)
+        self.assertEqual(cluster.total_cpu_cores, 20)
+        self.assertEqual(cluster.allocatable_cpu_cores, 15)
+        self.assertEqual(cluster.total_memory_bytes, 64 * 1024**3)
+        self.assertEqual(cluster.allocatable_memory_bytes, 48 * 1024**3)
+        self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
 
     def test_delete_cluster(self):
         mock_response = mock.MagicMock()
