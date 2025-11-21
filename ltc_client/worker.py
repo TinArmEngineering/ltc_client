@@ -25,7 +25,7 @@ LOGGING_LEVEL = logging.INFO
 logger = logging.getLogger()  # get the root logger?
 logger.setLevel(LOGGING_LEVEL)
 tld = threading.local()
-tld.job_id = "NoJobId"
+tld.resource_id = "Unset"
 
 
 class HostnameFilter(logging.Filter):
@@ -41,13 +41,13 @@ class HostnameFilter(logging.Filter):
 
 
 class DefaultIdLogFilter(logging.Filter):
-    """Used for logging the job id"""
+    """Used for logging the resource id"""
 
     def filter(self, record):
-        if not hasattr(tld, "job_id"):
-            record.id = "NoJobId"
+        if not hasattr(tld, "resource_id"):
+            record.id = "Unset"
         else:
-            record.id = tld.job_id
+            record.id = tld.resource_id
         return True
 
 
@@ -255,14 +255,14 @@ class StandardWorker:
 
         thread_id = threading.get_ident()
         payload = json.loads(body.decode())
-        tld.job_id = payload["id"]
+        tld.resource_id = payload["id"]
 
         api_root = os.getenv("API_ROOT_URL")
         api_key = payload.get("apikey", None)
 
         can_send_log_as_artifact = self._send_log_as_artifact and api_root and api_key
 
-        job_log_directory = f"{self._projects_path}/jobs/{tld.job_id}"
+        job_log_directory = f"{self._projects_path}/jobs/{tld.resource_id}"
         job_log_filename = f"{job_log_directory}/{self._worker_name}.log"
 
         if can_send_log_as_artifact:
@@ -283,11 +283,11 @@ class StandardWorker:
             logger.addHandler(file_handler)
 
         logger.info(
-            "Thread id: %s Delivery tag: %s Message body: %s Job id: %s",
+            "Thread id: %s Delivery tag: %s Message body: %s Resource id: %s",
             thread_id,
             delivery_tag,
             body,
-            tld.job_id,
+            tld.resource_id,
         )
 
         next_routing_key, new_body = func(body)
@@ -307,7 +307,7 @@ class StandardWorker:
                 logger.info("Creating artifact from job log")
                 api = Api(root_url=api_root, api_key=api_key, node_id=self._node_id)
                 api.create_job_artifact_from_file(
-                    tld.job_id, f"{self._worker_name}_log", job_log_filename
+                    tld.resource_id, f"{self._worker_name}_log", job_log_filename
                 )
             except Exception as e:
                 logger.error(f"Failed to create artifact from job log: {e}")
