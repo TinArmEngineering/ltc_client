@@ -453,6 +453,8 @@ class ClusterTestCase(unittest.TestCase):
             allocatable_cpu_cores=15,
             total_memory_bytes=64 * 1024**3,
             allocatable_memory_bytes=48 * 1024**3,
+            current_cpu_cores=10,
+            current_memory_bytes=32 * 1024**3,
             last_seen="2024-01-01T12:00:00Z",
         )
 
@@ -468,6 +470,8 @@ class ClusterTestCase(unittest.TestCase):
                 "allocatable_cpu_cores": 15,
                 "total_memory_bytes": 64 * 1024**3,
                 "allocatable_memory_bytes": 48 * 1024**3,
+                "current_cpu_cores": 10,
+                "current_memory_bytes": 32 * 1024**3,
                 "last_seen": "2024-01-01T12:00:00Z",
             },
         )
@@ -485,6 +489,8 @@ class ClusterTestCase(unittest.TestCase):
             allocatable_cpu_cores=18,
             total_memory_bytes=128 * 1024**3,
             allocatable_memory_bytes=96 * 1024**3,
+            current_cpu_cores=12,
+            current_memory_bytes=64 * 1024**3,
             last_seen="2024-01-02T12:00:00Z",
         )
 
@@ -500,6 +506,8 @@ class ClusterTestCase(unittest.TestCase):
                 "allocatable_cpu_cores": 18,
                 "total_memory_bytes": 128 * 1024**3,
                 "allocatable_memory_bytes": 96 * 1024**3,
+                "current_cpu_cores": 12,
+                "current_memory_bytes": 64 * 1024**3,
                 "last_seen": "2024-01-02T12:00:00Z",
             },
         )
@@ -524,6 +532,8 @@ class ClusterTestCase(unittest.TestCase):
             "allocatable_cpu_cores": 15,
             "total_memory_bytes": 64 * 1024**3,
             "allocatable_memory_bytes": 48 * 1024**3,
+            "current_cpu_cores": 10,
+            "current_memory_bytes": 32 * 1024**3,
             "last_seen": "2024-01-01T12:00:00Z",
         }
 
@@ -541,6 +551,8 @@ class ClusterTestCase(unittest.TestCase):
         self.assertEqual(cluster.allocatable_cpu_cores, 15)
         self.assertEqual(cluster.total_memory_bytes, 64 * 1024**3)
         self.assertEqual(cluster.allocatable_memory_bytes, 48 * 1024**3)
+        self.assertEqual(cluster.current_cpu_cores, 10)
+        self.assertEqual(cluster.current_memory_bytes, 32 * 1024**3)
         self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
 
     def test_get_cluster_by_name(self):
@@ -554,6 +566,8 @@ class ClusterTestCase(unittest.TestCase):
             "allocatable_cpu_cores": 15,
             "total_memory_bytes": 64 * 1024**3,
             "allocatable_memory_bytes": 48 * 1024**3,
+            "current_cpu_cores": 10,
+            "current_memory_bytes": 32 * 1024**3,
             "last_seen": "2024-01-01T12:00:00Z",
         }
 
@@ -571,6 +585,8 @@ class ClusterTestCase(unittest.TestCase):
         self.assertEqual(cluster.allocatable_cpu_cores, 15)
         self.assertEqual(cluster.total_memory_bytes, 64 * 1024**3)
         self.assertEqual(cluster.allocatable_memory_bytes, 48 * 1024**3)
+        self.assertEqual(cluster.current_cpu_cores, 10)
+        self.assertEqual(cluster.current_memory_bytes, 32 * 1024**3)
         self.assertEqual(cluster.last_seen, "2024-01-01T12:00:00Z")
 
     def test_delete_cluster(self):

@@ -164,6 +164,8 @@ class Cluster:
         allocatable_cpu_cores: int = 0,
         total_memory_bytes: int = 0,
         allocatable_memory_bytes: int = 0,
+        current_cpu_cores: int = 0,
+        current_memory_bytes: int = 0,
         last_seen: str = None,
     ):
         self.id = id
@@ -173,6 +175,8 @@ class Cluster:
         self.allocatable_cpu_cores = allocatable_cpu_cores
         self.total_memory_bytes = total_memory_bytes
         self.allocatable_memory_bytes = allocatable_memory_bytes
+        self.current_cpu_cores = current_cpu_cores
+        self.current_memory_bytes = current_memory_bytes
         self.last_seen = last_seen
 
     def to_dict(self):
@@ -184,6 +188,8 @@ class Cluster:
             "allocatable_cpu_cores": self.allocatable_cpu_cores,
             "total_memory_bytes": self.total_memory_bytes,
             "allocatable_memory_bytes": self.allocatable_memory_bytes,
+            "current_cpu_cores": self.current_cpu_cores,
+            "current_memory_bytes": self.current_memory_bytes,
             "last_seen": self.last_seen,
         }
 
@@ -200,6 +206,8 @@ class Cluster:
             allocatable_cpu_cores=data.get("allocatable_cpu_cores"),
             total_memory_bytes=data.get("total_memory_bytes"),
             allocatable_memory_bytes=data.get("allocatable_memory_bytes"),
+            current_cpu_cores=data.get("current_cpu_cores"),
+            current_memory_bytes=data.get("current_memory_bytes"),
             last_seen=data.get("last_seen"),
         )
 
