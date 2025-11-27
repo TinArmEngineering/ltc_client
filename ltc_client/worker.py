@@ -3,15 +3,16 @@ import json
 import logging
 import os
 import pika
-from socket import gaierror
 import platform
 import ssl
 import sys
 import threading
 import time
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from python_logging_rabbitmq import RabbitMQHandler
+from socket import gaierror
 
 from ltc_client.api import Api
 
@@ -26,6 +27,46 @@ logger = logging.getLogger()  # get the root logger?
 logger.setLevel(LOGGING_LEVEL)
 tld = threading.local()
 tld.resource_id = "Unset"
+
+# A global flag to track if your main application logic is initialized
+APPLICATION_READY = False
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Handles requests to the /healthz endpoint."""
+
+    def do_GET(self):
+        if self.path == "/healthz":
+            self.check_health_status()
+        else:
+            # Handle all other paths with a 404 Not Found
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not Found")
+
+    def check_health_status(self):
+        """Logic to determine if the application is healthy."""
+        if APPLICATION_READY:
+            # SUCCESS: App is ready, return 200
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"OK")
+        else:
+            # FAILURE: App is still starting up, return 503 Service Unavailable
+            self.send_response(503)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Service Unavailable - Starting Up")
+
+
+def start_health_server(port=8080):
+    # ... (rest of the function is the same) ...
+    server_address = ("", port)
+    httpd = HTTPServer(server_address, HealthCheckHandler)
+    print(f"Starting health check server on port {port}...")
+    # Run the server in the background
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
 
 class HostnameFilter(logging.Filter):
@@ -162,6 +203,8 @@ class StandardWorker:
             ssl_options,
         )
 
+        start_health_server(port=8080)
+
         self._channel = self._connection.channel()
         self._channel.basic_qos(prefetch_count=queue_prefetch_count, global_qos=False)
         self._channel.exchange_declare(
@@ -223,6 +266,8 @@ class StandardWorker:
         try:
             logger.info("Starting to consume messages")
             self._channel.start_consuming()
+            global APPLICATION_READY
+            APPLICATION_READY = True
         except KeyboardInterrupt:
             logger.info("Stopping consuming ...")
             self._channel.stop_consuming()
