@@ -265,9 +265,9 @@ class StandardWorker:
     def start(self):
         try:
             logger.info("Starting to consume messages")
-            self._channel.start_consuming()
             global APPLICATION_READY
             APPLICATION_READY = True
+            self._channel.start_consuming()
         except KeyboardInterrupt:
             logger.info("Stopping consuming ...")
             self._channel.stop_consuming()
