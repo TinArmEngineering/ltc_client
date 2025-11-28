@@ -93,6 +93,7 @@ def encode(quantity: "pint.Quantity") -> dict:
         "magnitude": magnitude_list,
         "units": units_list,
         "shape": shape,
+        "unit_string": f"{quantity.units:~P}",
     }
 
     logger.debug("convert %s -> %s", quantity, enc)

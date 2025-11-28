@@ -138,6 +138,7 @@ class TestEncodeFunction(unittest.TestCase):
         self.assertEqual(result["magnitude"], [42.0])
         self.assertEqual(result["shape"], ())
         self.assertEqual(result["units"], [{"name": "meter", "exponent": 1}])
+        self.assertEqual(result["unit_string"], "m")
 
     def test_encode_array_quantity(self):
         """Test encoding an array quantity."""
@@ -152,6 +153,7 @@ class TestEncodeFunction(unittest.TestCase):
         self.assertEqual(result["magnitude"], [1.0, 2.0, 3.0, 4.0])
         self.assertEqual(result["shape"], (2, 2))
         self.assertEqual(result["units"], [{"name": "second", "exponent": -1}])
+        self.assertEqual(result["unit_string"], "1/s")
 
     def test_encode_complex_units(self):
         """Test encoding a quantity with complex compound units."""
@@ -182,6 +184,7 @@ class TestEncodeFunction(unittest.TestCase):
         self.assertEqual(result["magnitude"], [42.0])
         self.assertEqual(result["shape"], ())
         self.assertEqual(result["units"], [{"name": "count", "exponent": 1}])
+        self.assertEqual(result["unit_string"], "count")
 
     def test_encode_single_element_array(self):
         """Test encoding a single-element array quantity."""
@@ -196,6 +199,7 @@ class TestEncodeFunction(unittest.TestCase):
         self.assertEqual(result["magnitude"], [3.14])
         self.assertEqual(result["shape"], (1,))
         self.assertEqual(result["units"], [{"name": "radian", "exponent": 1}])
+        self.assertEqual(result["unit_string"], "rad")
 
     def test_encode_3d_array(self):
         """Test encoding a 3D array quantity."""
@@ -210,6 +214,7 @@ class TestEncodeFunction(unittest.TestCase):
         self.assertEqual(len(result["magnitude"]), 24)
         self.assertEqual(result["shape"], (2, 3, 4))
         self.assertEqual(result["units"], [{"name": "millimeter", "exponent": 1}])
+        self.assertEqual(result["unit_string"], "mm")
         # Verify magnitude is flattened
         np.testing.assert_array_equal(
             result["magnitude"], np.arange(24, dtype=np.float64).tolist()
