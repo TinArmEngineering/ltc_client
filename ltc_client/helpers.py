@@ -35,8 +35,9 @@ def decode(enc: dict) -> "pint.Quantity":
         The decoded quantity object
     """
 
+    units_data = enc.get("units") or ()
     units_tuple: Tuple[Tuple[str, int], ...] = tuple(
-        (e["name"], e["exponent"]) for e in enc.get("units", ())
+        (e["name"], e["exponent"]) for e in units_data
     )
 
     # magnitude can be a single value or an array represented as a list

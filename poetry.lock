@@ -848,4 +848,4 @@ websocket-client = ">=1.8.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c29fdc69a6a9e16dfa93564077d2df0b9e17b201200f684da781e971b4232f51"
+content-hash = "5f1ef3f1bc6d1d102afa8b08bdd11296d5ab24a87dfa4507fccb9d10a819f1d8"

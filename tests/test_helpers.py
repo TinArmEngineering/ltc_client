@@ -119,6 +119,21 @@ class TestDecodeFunction(unittest.TestCase):
         with self.assertWarns(DeprecationWarning):
             c[0] = b
 
+    @patch("ltc_client.helpers.logger")
+    def test_decode_with_missing_units(self, mock_logger):
+        """Test that missing unit data no longer raises the old TypeError."""
+        enc = {
+            "magnitude": [7],
+            "shape": (),
+            "units": None,
+        }
+
+        result = decode(enc)
+
+        self.assertEqual(result.magnitude, 7)
+        self.assertEqual(result.units, Q.dimensionless)
+        mock_logger.debug.assert_called()
+
 
 class TestEncodeFunction(unittest.TestCase):
     """Test the encode function and encode-decode round trips."""
