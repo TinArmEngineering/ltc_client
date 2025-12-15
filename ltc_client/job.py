@@ -62,7 +62,6 @@ class Job:
 
         self._string_data = {
             "mesh_reuse_series": self._mesh_reuse_series or "",
-            "netlist": json.dumps(self._netlist) if self._netlist is not None else "",
         }
 
     def __repr__(self) -> str:
@@ -80,10 +79,6 @@ class Job:
         if value is not None and not isinstance(value, dict):
             raise ValueError("netlist must be a dict or None")
         self._netlist = value
-        if hasattr(self, "_string_data"):
-            self._string_data["netlist"] = (
-                json.dumps(value) if value is not None else ""
-            )
 
     @property
     def mesh_reuse_series(self) -> Optional[str]:
@@ -116,6 +111,7 @@ class Job:
                 {"name": name, "value": value}
                 for name, value in self._string_data.items()
             ],
+            "netlist": self._netlist,
         }
 
         # operating_point and simulation are expected to contain objects with to_tuple()
@@ -155,11 +151,14 @@ class Job:
             item["name"]: item["value"] for item in job_dict.get("string_data", [])
         }
         mesh_reuse_series = string_data.get("mesh_reuse_series")
-        netlist_str = string_data.get("netlist")
-        if netlist_str:
-            netlist = json.loads(netlist_str)
+        netlist_raw = job_dict.get("netlist")
+        if isinstance(netlist_raw, str):
+            try:
+                netlist = json.loads(netlist_raw)
+            except Exception:
+                netlist = None
         else:
-            netlist = None
+            netlist = netlist_raw
 
         # decode data sections using helpers.decode
         data = job_dict.get("data", [])

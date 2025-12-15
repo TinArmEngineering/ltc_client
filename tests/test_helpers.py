@@ -786,7 +786,6 @@ class TestJob(unittest.TestCase):
 
         expected_string_data = [
             {"name": "mesh_reuse_series", "value": series_id},
-            {"name": "netlist", "value": json.dumps(netlist_data)},
         ]
 
         self.assertIn("string_data", api_data)
@@ -795,6 +794,7 @@ class TestJob(unittest.TestCase):
             sorted(api_data["string_data"], key=lambda x: x["name"]),
             sorted(expected_string_data, key=lambda x: x["name"]),
         )
+        self.assertEqual(api_data.get("netlist"), netlist_data)
 
     def test_job_repr(self):
         with patch.object(Job, "generate_title", return_value="test-title"):
@@ -885,7 +885,34 @@ class TestJob(unittest.TestCase):
         original_job = Job(
             machine, operating_point, simulation, title="test-round-trip"
         )
-        original_job.netlist = {"test": "netlist_data"}
+        original_job.netlist = {
+            "I_A": {
+                "circuit": 1,
+                "neg_pin": 1,
+                "pos_pin": 2,
+                "value": {
+                    "magnitude": [1],
+                    "shape": [1],
+                    "units": [{"exponent": 1, "name": "ampere"}],
+                },
+            },
+            "slot_1_area_layer_0": {
+                "circuit": 1,
+                "neg_pin": 1,
+                "pos_pin": 2,
+                "coil": {
+                    "additional_coil_resistance": {
+                        "magnitude": [0],
+                        "shape": [1],
+                        "units": [{"name": "ohm", "exponent": 1}],
+                        "unit_string": "",
+                    },
+                    "turns_per_coil": 8,
+                },
+                "component_number": 3,
+                "master_body_list": ["slot_1_area_layer_0"],
+            },
+        }
         original_job.mesh_reuse_series = "test-series"
 
         # Convert to API format
