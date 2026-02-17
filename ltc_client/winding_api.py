@@ -113,9 +113,11 @@ class WindingApi:
         winding_netlist = response.json()
         return winding_netlist
 
-    def get_circle_packing_max_diameter(self, geom_dict, n=1, part="slot_area"):
+    def get_circle_packing_max_diameter(
+        self, geom_dict, n=1, part="slot_area", refect=False
+    ):
         headers = {}
-        data_payload = {"geometry": geom_dict[part], "n": n}
+        data_payload = {"geometry": geom_dict[part], "n": n, "refect": refect}
         response = requests.request(
             "POST",
             f"{self.api_url}/packing/max_diameter",
@@ -131,9 +133,14 @@ class WindingApi:
         geom_dict,
         diameter=1.0 * Q.mm,
         part="slot_area",
+        refect=False,
     ):
         headers = {}
-        data_payload = {"geometry": geom_dict[part], "d": diameter.to("mm").magnitude}
+        data_payload = {
+            "geometry": geom_dict[part],
+            "d": diameter.to("mm").magnitude,
+            "refect": refect,
+        }
         response = requests.request(
             "POST",
             f"{self.api_url}/packing/max_number",
