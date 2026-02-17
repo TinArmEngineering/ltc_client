@@ -70,3 +70,65 @@ class GeometryApi:
             for g in stator_geom["geometry"]["geometries"]
         }
         return geom_dict
+
+    @Q.wraps(
+        None,
+        (
+            None,
+            "mm",
+            "mm",
+            "mm",
+            "mm",
+            "mm",
+            "mm",
+            "mm",
+            "mm",
+            "count",
+            "count",
+            None,
+            "radians",
+        ),
+    )
+    def get_dwpst_stator_geom(
+        self,
+        slot_liner_thickness,
+        stator_bore,
+        tooth_tip_depth,
+        slot_opening,
+        tooth_width,
+        stator_outer_diameter,
+        back_iron_thickness,
+        stator_internal_radius,
+        number_slots,
+        number_pins,
+        slot_back_shape,
+        tooth_tip_angle,
+    ):
+        """Get the geometry of a FSCW segmented stator.
+        The geometry expects all dimensions in mm and angles in radians, this function is wrapped by Pint to
+        ensure consistent units.
+        """
+        payload = {
+            "number_pins": number_pins,
+            "slot_back_shape": slot_back_shape,
+            "back_iron_thickness": back_iron_thickness,
+            "number_slots": number_slots,
+            "slot_liner_thickness": slot_liner_thickness,
+            "stator_bore": stator_bore,
+            "stator_internal_radius": stator_internal_radius,
+            "stator_outer_diameter": stator_outer_diameter,
+            "tooth_tip_angle": tooth_tip_angle,
+            "tooth_tip_depth": tooth_tip_depth,
+            "tooth_width": tooth_width,
+            "slot_opening": slot_opening,
+        }
+        url = f"{self.api_url}/stators/dwpst/"
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        stator_geom = response.json()
+        # turn the list of name object pairs back into a dictionary
+        geom_dict = {
+            g["type"]: {k: v for k, v in g.items() if k != "type"}
+            for g in stator_geom["geometry"]["geometries"]
+        }
+        return geom_dict
