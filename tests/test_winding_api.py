@@ -172,7 +172,11 @@ def test_get_circle_packing_max_diameter(winding_api, mock_response):
 
         diameter, centers = winding_api.get_circle_packing_max_diameter(geom_dict, n)
 
-        expected_payload = {"geometry": geom_dict["slot_area"], "n": n}
+        expected_payload = {
+            "geometry": geom_dict["slot_area"],
+            "n": n,
+            "reflect": False,
+        }
         mock_request.assert_called_once_with(
             "POST",
             f"{winding_api.api_url}/packing/max_diameter",
@@ -202,6 +206,7 @@ def test_get_circle_packing_max_number(winding_api, mock_response):
         expected_payload = {
             "geometry": geom_dict["slot_area"],
             "d": diameter_to_pack.to("mm").magnitude,
+            "reflect": False,
         }
         mock_request.assert_called_once_with(
             "POST",
