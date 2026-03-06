@@ -166,7 +166,7 @@ class Cluster:
         allocatable_memory_bytes: int = 0,
         current_cpu_cores: int = 0,
         current_memory_bytes: int = 0,
-        last_seen: str = None,
+        last_seen: str | None = None,
     ):
         self.id = id
         self.name = name
@@ -198,16 +198,19 @@ class Cluster:
 
     @staticmethod
     def from_dict(data: dict) -> "Cluster":
+        # `id` and `name` are required by the constructor; index them to
+        # surface a KeyError if missing. Other numeric fields may be None
+        # from external sources so provide safe defaults.
         return Cluster(
-            id=data.get("id"),
-            name=data.get("name"),
-            node_count=data.get("node_count"),
-            total_cpu_cores=data.get("total_cpu_cores"),
-            allocatable_cpu_cores=data.get("allocatable_cpu_cores"),
-            total_memory_bytes=data.get("total_memory_bytes"),
-            allocatable_memory_bytes=data.get("allocatable_memory_bytes"),
-            current_cpu_cores=data.get("current_cpu_cores"),
-            current_memory_bytes=data.get("current_memory_bytes"),
+            id=data["id"],
+            name=data["name"],
+            node_count=data.get("node_count", 0) or 0,
+            total_cpu_cores=data.get("total_cpu_cores", 0) or 0,
+            allocatable_cpu_cores=data.get("allocatable_cpu_cores", 0) or 0,
+            total_memory_bytes=data.get("total_memory_bytes", 0) or 0,
+            allocatable_memory_bytes=data.get("allocatable_memory_bytes", 0) or 0,
+            current_cpu_cores=data.get("current_cpu_cores", 0) or 0,
+            current_memory_bytes=data.get("current_memory_bytes", 0) or 0,
             last_seen=data.get("last_seen"),
         )
 
@@ -455,6 +458,18 @@ class Api:
         )
         response.raise_for_status()
         return Material.from_api(response.json())
+
+    def get_materials(self) -> Any:
+        """
+        Get all materials from the TAE API
+        """
+        from .helpers import Material
+
+        response = self._session.get(
+            url=f"{self._root_url}/materials",
+        )
+        response.raise_for_status()
+        return [Material.from_api(m) for m in response.json()]
 
     def create_material(self, material: "Material"):
         """

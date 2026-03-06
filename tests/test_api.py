@@ -398,11 +398,54 @@ class MaterialTestCase(unittest.TestCase):
         self.assertEqual(material.id, MATERIAL_ID)
         self.assertEqual(material.reference, "www.example.com")
         self.assertEqual(material.name, "test_name")
-        self.assertEqual(material.key_words, ["keyword1", "keyword2"])
+
+    def test_get_materials(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {
+                "id": MATERIAL_ID,
+                "reference": "www.example.com",
+                "name": "test_name",
+                "key_words": ["keyword1", "keyword2"],
+                "data": [
+                    {
+                        "section": "material_properties",
+                        "name": "property1",
+                        "value": {
+                            "magnitude": [10],
+                            "shape": [1],
+                            "units": [{"name": "millimeter", "exponent": 1}],
+                        },
+                    }
+                ],
+            },
+            {
+                "id": "otherid",
+                "reference": "www.other.com",
+                "name": "other_name",
+                "key_words": [],
+                "data": [],
+            },
+        ]
+        self.mock_session.get.return_value = mock_response
+
+        materials = self.api.get_materials()
+
+        self.mock_session.get.assert_called_with(
+            url=f"{ROOT_URL}/materials",
+        )
+
+        self.assertEqual(len(materials), 2)
+        self.assertEqual(materials[0].id, MATERIAL_ID)
+        self.assertEqual(materials[0].name, "test_name")
+        self.assertEqual(materials[1].id, "otherid")
+        self.assertEqual(materials[1].name, "other_name")
+        self.assertEqual(materials[0].key_words, ["keyword1", "keyword2"])
         self.assertEqual(
-            len(material.material_properties), 1
+            len(materials[0].material_properties), 1
         )  # Assuming one property in data
-        self.assertEqual(material.material_properties["property1"], 10 * Q.mm)
+        self.assertEqual(materials[0].material_properties["property1"], 10 * Q.mm)
 
     def test_create_material(self):
         mock_response = mock.MagicMock()
