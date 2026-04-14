@@ -12,13 +12,52 @@ import logging
 import uuid
 import asyncio
 import json
+from dataclasses import dataclass, field
 from uuid import uuid4
-from typing import Any, Tuple, List, Dict, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 
 logger = logging.getLogger(__name__)
 
 q = pint.get_application_registry()
+
+
+@dataclass
+class ProgressEvent:
+    """Structured progress event emitted by :class:`ProgressListener`.
+
+    Attributes
+    ----------
+    job_id : str
+        The job identifier this event belongs to.
+    worker : str
+        The worker name that produced this event.
+    kind : str
+        One of ``"progress"``, ``"status"``, ``"remaining"``, or
+        ``"time_remaining"``.
+    done : float, optional
+        Units completed so far (for ``"progress"`` / ``"remaining"``).
+    total : float, optional
+        Total units (for ``"progress"`` / ``"remaining"``).
+    status : int, optional
+        Numeric job-status code (for ``"status"`` events).
+    status_name : str, optional
+        Human-readable status name (for ``"status"`` events).
+    remaining_time : str, optional
+        Remaining time string (for ``"time_remaining"`` events).
+    raw : dict, optional
+        The raw parsed JSON payload from the STOMP frame.
+    """
+
+    job_id: str
+    worker: str
+    kind: str
+    done: Optional[float] = None
+    total: Optional[float] = None
+    status: Optional[int] = None
+    status_name: Optional[str] = None
+    remaining_time: Optional[str] = None
+    raw: Optional[dict] = None
 
 
 def decode(enc: dict) -> "pint.Quantity":
@@ -281,7 +320,7 @@ class ProgressListener(StompListener):
             if not self._callback_fn:
                 return
 
-            # TODO specify progress messages in a scheme. some progress payloads use 'done' / 'total'
+            # Emit a structured ProgressEvent for each recognised message type.
             if isinstance(data, dict):
                 if "done" in data:
                     logger.debug(
@@ -290,10 +329,14 @@ class ProgressListener(StompListener):
                         data.get("total"),
                     )
                     self._callback_fn(
-                        data["done"],
-                        tsize=data.get("total"),
-                        worker=worker_name,
-                        message_type="progress",
+                        ProgressEvent(
+                            job_id=self.job_id,
+                            worker=worker_name,
+                            kind="progress",
+                            done=data["done"],
+                            total=data.get("total"),
+                            raw=data,
+                        )
                     )
                     return
 
@@ -310,10 +353,14 @@ class ProgressListener(StompListener):
                         status_val = data["status"]
                         logger.exception("Non-integer status received: %r", status_val)
                     self._callback_fn(
-                        status_val,
-                        tsize=None,
-                        worker=worker_name,
-                        message_type="status",
+                        ProgressEvent(
+                            job_id=self.job_id,
+                            worker=worker_name,
+                            kind="status",
+                            status=status_val,
+                            status_name=STATUS_JOB.get(status_val),
+                            raw=data,
+                        )
                     )
                     return
 
@@ -328,11 +375,13 @@ class ProgressListener(StompListener):
                                 "Time remaining update: %s %s", remaining, unit
                             )
                             self._callback_fn(
-                                None,
-                                tsize=None,
-                                worker=worker_name,
-                                message_type="time_remaining",
-                                remaining_time=f"{remaining:.1f} {unit}",
+                                ProgressEvent(
+                                    job_id=self.job_id,
+                                    worker=worker_name,
+                                    kind="time_remaining",
+                                    remaining_time=f"{remaining:.1f} {unit}",
+                                    raw=data,
+                                )
                             )
                         else:
                             done = max(0, min(100, int(round(100.0 - remaining))))
@@ -342,10 +391,14 @@ class ProgressListener(StompListener):
                                 done,
                             )
                             self._callback_fn(
-                                done,
-                                tsize=100,
-                                worker=worker_name,
-                                message_type="remaining",
+                                ProgressEvent(
+                                    job_id=self.job_id,
+                                    worker=worker_name,
+                                    kind="remaining",
+                                    done=done,
+                                    total=100,
+                                    raw=data,
+                                )
                             )
                     except Exception as e:
                         logger.debug(
@@ -363,7 +416,94 @@ class ProgressListener(StompListener):
             logger.debug("ProgressListener.on_message END frame=%r", frame)
 
 
-async def async_job_monitor(api, my_job, connection, position, auto_start=True):
+class TqdmProgressReporter:
+    """Renders :class:`ProgressEvent` updates using a ``tqdm`` progress bar.
+
+    This is an optional adapter that sits on top of the event-based monitoring
+    core. It is suitable for plain Python scripts and Jupyter notebooks.  Pass
+    an instance as the ``progress_callback`` argument of
+    :func:`async_job_monitor` or :func:`monitor_jobs` to get the familiar
+    ``tqdm`` progress display.
+
+    Parameters
+    ----------
+    desc : str
+        Progress bar description label.
+    total : int
+        Total units for the progress bar.
+    position : int
+        Vertical position of the bar (for multiple concurrent bars).
+    leave : bool
+        Whether to leave the bar visible after completion.
+
+    Examples
+    --------
+    >>> reporter = TqdmProgressReporter(desc="My job", position=0)
+    >>> await async_job_monitor(api, job, conn, progress_callback=reporter)
+    >>> reporter.close()
+    """
+
+    def __init__(self, desc: str = "Job", total: int = 100, position: int = 0, leave: bool = False):
+        self._bar = TqdmUpTo(total=total, desc=desc, position=position, leave=leave)
+
+    def __call__(self, event: "ProgressEvent") -> None:
+        """Handle a single :class:`ProgressEvent`."""
+        if event.kind in ("progress", "remaining") and event.done is not None:
+            if event.total is not None and self._bar.total != event.total:
+                self._bar.total = event.total
+            self._bar.n = max(self._bar.n, int(event.done))
+            self._bar.refresh()
+        elif event.kind == "time_remaining" and event.remaining_time:
+            self._bar.set_postfix_str(f"ETA {event.remaining_time}")
+        elif event.kind == "status" and event.status_name:
+            self._bar.set_description(f"{self._bar.desc} [{event.status_name}]")
+
+    def close(self) -> None:
+        """Close the underlying tqdm bar."""
+        self._bar.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
+async def async_job_monitor(
+    api,
+    my_job,
+    connection,
+    position: int = 0,
+    auto_start: bool = True,
+    progress_callback: Optional[Callable[["ProgressEvent"], None]] = None,
+):
+    """Monitor a single job asynchronously and report progress.
+
+    Parameters
+    ----------
+    api : Api
+        API client instance.
+    my_job : Job
+        The job to monitor.
+    connection : StompConnection
+        Active STOMP connection for receiving progress frames.
+    position : int, optional
+        Vertical position for the tqdm bar when *progress_callback* is ``None``
+        (default ``0``).
+    auto_start : bool, optional
+        Queue the job for meshing automatically (default ``True``).
+    progress_callback : callable, optional
+        A callable that accepts a single :class:`ProgressEvent` argument.  When
+        ``None`` (default) a :class:`TqdmProgressReporter` is created
+        automatically so that existing callers continue to see a progress bar.
+        Pass a custom callable to receive structured events without any tqdm
+        dependency (useful for marimo, Jupyter widgets, or silent operation).
+
+    Returns
+    -------
+    str
+        The final job status name (e.g. ``"Complete"``).
+    """
     uid = str(uuid4())
     listener = ProgressListener(my_job, uid)
     connection.add_listener(listener)
@@ -375,62 +515,62 @@ async def async_job_monitor(api, my_job, connection, position, auto_start=True):
     # can schedule callbacks safely on the asyncio loop.
     loop = asyncio.get_running_loop()
 
-    with TqdmUpTo(
-        total=100,
-        desc=f"Job {my_job.title}",
-        position=position,
-        leave=False,
-    ) as pbar:
-        # handle updates on the asyncio loop thread
-        def _on_progress(done, tsize=None, worker=None, message_type=None, **kw):
-            try:
-                # numeric progress -> update bar
-                if isinstance(done, (int, float)):
-                    pbar.n = max(pbar.n, int(done))
-                    pbar.refresh()
-                # status messages: mark done when threshold reached
-                if message_type == "status" or isinstance(done, int):
-                    try:
-                        status_val = int(done)
-                        if status_val >= JOB_STATUS["Complete"]:
-                            done_event.set()
-                    except Exception:
-                        pass
-            except Exception:
-                logger.exception("Error in _on_progress handler")
+    # If no callback was supplied, use a tqdm reporter (preserves legacy UX).
+    _owned_reporter: Optional[TqdmProgressReporter] = None
+    if progress_callback is None:
+        _owned_reporter = TqdmProgressReporter(
+            desc=f"Job {my_job.title}",
+            total=100,
+            position=position,
+            leave=False,
+        )
+        progress_callback = _owned_reporter
 
-        # wrapper invoked by ProgressListener (likely not on loop thread)
-        def _cb_wrapper(*args, **kwargs):
-            import functools
-
-            try:
-                # schedule actual handling on asyncio loop thread (bind kwargs via partial)
-                loop.call_soon_threadsafe(
-                    functools.partial(_on_progress, *args, **kwargs)
-                )
-            except Exception:
-                logger.exception("Error scheduling _on_progress on event loop")
-
-        # install the wrapper as the listener callback
-        listener.callback_fn = _cb_wrapper
-        logger.debug("async_job_monitor: listener and subscription installed")
-        if auto_start:
-            api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
-        # Wait until done_event is set (by status >= complete)
+    def _on_progress(event: "ProgressEvent") -> None:
         try:
-            await done_event.wait()
-        except asyncio.CancelledError:
-            raise
-        finally:
-            # cleanup subscription/listener
-            try:
-                connection.unsubscribe(id=uid)
-            except Exception:
-                logger.debug("unsubscribe failed", exc_info=True)
-            try:
-                connection.remove_listener(listener)
-            except Exception:
-                logger.debug("remove_listener failed", exc_info=True)
+            if progress_callback is not None:
+                progress_callback(event)
+            # Mark the job done when a terminal status is received.
+            if event.kind == "status" and event.status is not None:
+                try:
+                    if int(event.status) >= JOB_STATUS["Complete"]:
+                        done_event.set()
+                except Exception:
+                    pass
+        except Exception:
+            logger.exception("Error in _on_progress handler")
+
+    import functools
+
+    def _cb_wrapper(event: "ProgressEvent") -> None:
+        try:
+            # Schedule actual handling on the asyncio loop thread.
+            loop.call_soon_threadsafe(functools.partial(_on_progress, event))
+        except Exception:
+            logger.exception("Error scheduling _on_progress on event loop")
+
+    # install the wrapper as the listener callback
+    listener.callback_fn = _cb_wrapper
+    logger.debug("async_job_monitor: listener and subscription installed")
+    if auto_start:
+        api.update_job_status(my_job.id, JOB_STATUS["QueuedForMeshing"])
+    # Wait until done_event is set (by status >= complete)
+    try:
+        await done_event.wait()
+    except asyncio.CancelledError:
+        raise
+    finally:
+        # cleanup subscription/listener
+        try:
+            connection.unsubscribe(id=uid)
+        except Exception:
+            logger.debug("unsubscribe failed", exc_info=True)
+        try:
+            connection.remove_listener(listener)
+        except Exception:
+            logger.debug("remove_listener failed", exc_info=True)
+        if _owned_reporter is not None:
+            _owned_reporter.close()
 
     # final job status
     final_job_state = api.get_job(my_job.id)
@@ -472,7 +612,7 @@ class JobBatchProgressListener(StompListener):
 
     def on_message(self, frame):
         # Log every frame received regardless of content
-        self.last_message_time = asyncio.get_event_loop().time()
+        self.last_message_time = asyncio.get_event_loop_policy().get_event_loop().time()
         self.message_count += 1
 
         # Debug raw frame data
@@ -565,29 +705,49 @@ class JobBatchProgressListener(StompListener):
             logger.debug("JobBatchProgressListener.on_message END frame=%r", frame)
 
 
+class _NullContext:
+    """A no-op context manager used as a placeholder when tqdm is disabled."""
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *args):
+        pass
+
+
 async def monitor_jobs(
-    api: "Api", jobs: List["Job"], connection, auto_start=True, message_timeout=30
+    api: "Api",
+    jobs: List["Job"],
+    connection,
+    auto_start: bool = True,
+    message_timeout: int = 30,
+    progress_callback: Optional[Callable[["ProgressEvent"], None]] = None,
 ):
-    """
-    Monitors a batch of jobs asynchronously with progress information.
+    """Monitor a batch of jobs asynchronously and report progress.
 
     Parameters
     ----------
     api : Api
-        API client instance
+        API client instance.
     jobs : List[Job]
-        List of jobs to monitor
-    connection : Connection
-        STOMP connection for receiving job updates
+        List of jobs to monitor.
+    connection : StompConnection
+        Active STOMP connection for receiving job updates.
     auto_start : bool, optional
-        Whether to start the jobs automatically, by default True
+        Queue all jobs for meshing automatically (default ``True``).
     message_timeout : int, optional
-        Timeout in seconds if no status updates are received, by default 30
+        Seconds of inactivity before monitoring is abandoned (default ``30``).
+    progress_callback : callable, optional
+        A callable that accepts a single :class:`ProgressEvent` argument.
+        When ``None`` (default) a ``tqdm`` batch progress bar is displayed.
+        Supply a custom callable to receive structured events and suppress the
+        tqdm display — useful for marimo, Jupyter widgets, or silent operation.
 
     Returns
     -------
     Dict[str, str]
-        Dictionary mapping job IDs to their final status
+        Dictionary mapping job IDs to their final status names.  On timeout an
+        extra ``"_monitoring_status": "TIMED_OUT"`` key is included.
     """
     logger.info(f"Starting batch monitoring for {len(jobs)} jobs")
     job_ids = [job.id for job in jobs]
@@ -610,27 +770,22 @@ async def monitor_jobs(
     job_statuses = {job_id: "Preparing" for job_id in job_ids}
 
     # Track last activity timestamp
-    last_activity = asyncio.get_event_loop().time()
+    loop = asyncio.get_running_loop()
+    last_activity = loop.time()
 
     # Set up status counters for display
     status_counts = {status_name: 0 for status_name in STATUS_JOB.values()}
     status_counts["Preparing"] = len(jobs)
 
-    loop = asyncio.get_running_loop()
-
     def update_status_counts():
-        """Update the counter of jobs in each status"""
-        # Reset all counters
+        """Update the counter of jobs in each status."""
         for status in status_counts:
             status_counts[status] = 0
-
-        # Count jobs in each status
         for status in job_statuses.values():
             if status in status_counts:
                 status_counts[status] += 1
             else:
                 status_counts[status] = 1
-
         logger.debug(
             f"Current job status counts: {', '.join([f'{s}:{c}' for s, c in status_counts.items() if c > 0])}"
         )
@@ -639,7 +794,7 @@ async def monitor_jobs(
         nonlocal last_activity
 
         # Always update activity timestamp for any message
-        last_activity = asyncio.get_event_loop().time()
+        last_activity = loop.time()
         logger.debug(f"Message received for job {job_id}: {data}")
 
         # Handle status updates
@@ -652,6 +807,22 @@ async def monitor_jobs(
                 # Update job status
                 job_statuses[job_id] = status_name
                 update_status_counts()
+
+                # Emit structured event if a callback was supplied.
+                if progress_callback is not None:
+                    try:
+                        progress_callback(
+                            ProgressEvent(
+                                job_id=job_id,
+                                worker="",
+                                kind="status",
+                                status=status_val,
+                                status_name=status_name,
+                                raw=data,
+                            )
+                        )
+                    except Exception:
+                        logger.exception("Error in progress_callback")
 
                 # If job is complete or beyond, set its event
                 if status_val >= JOB_STATUS["Complete"]:
@@ -668,7 +839,20 @@ async def monitor_jobs(
                 done = data["done"]
                 total = data.get("total", 100)
                 logger.debug(f"Job {job_id} progress: {done}/{total}")
-                # Just registers activity, doesn't change status
+                if progress_callback is not None:
+                    try:
+                        progress_callback(
+                            ProgressEvent(
+                                job_id=job_id,
+                                worker="",
+                                kind="progress",
+                                done=done,
+                                total=total,
+                                raw=data,
+                            )
+                        )
+                    except Exception:
+                        logger.exception("Error in progress_callback")
             except (ValueError, TypeError) as e:
                 logger.warning(f"Error parsing done/total for job {job_id}: {e}")
 
@@ -680,14 +864,38 @@ async def monitor_jobs(
 
                 if unit in ("seconds", "second"):
                     logger.debug(f"Job {job_id}: Time remaining: {remaining} {unit}")
-                    # No status change, but this is valid activity
+                    if progress_callback is not None:
+                        try:
+                            progress_callback(
+                                ProgressEvent(
+                                    job_id=job_id,
+                                    worker="",
+                                    kind="time_remaining",
+                                    remaining_time=f"{remaining:.1f} {unit}",
+                                    raw=data,
+                                )
+                            )
+                        except Exception:
+                            logger.exception("Error in progress_callback")
                 else:
-                    # For percentage style remaining updates
                     done = max(0, min(100, int(round(100.0 - remaining))))
                     logger.debug(
                         f"Job {job_id}: Progress: {done}% (remaining: {remaining}%)"
                     )
-                    # No status change, but this is valid activity
+                    if progress_callback is not None:
+                        try:
+                            progress_callback(
+                                ProgressEvent(
+                                    job_id=job_id,
+                                    worker="",
+                                    kind="remaining",
+                                    done=done,
+                                    total=100,
+                                    raw=data,
+                                )
+                            )
+                        except Exception:
+                            logger.exception("Error in progress_callback")
             except Exception as e:
                 logger.warning(
                     f"Could not interpret remaining value for job {job_id}: {data.get('remaining')} ({e})"
@@ -702,7 +910,7 @@ async def monitor_jobs(
     listener = JobBatchProgressListener(job_ids, _on_message)
     connection.add_listener(listener)
 
-    # Subscribe to topics for all jobs in the batch
+    # Subscribe to topics for all jobs in the batch (one subscription per job).
     for job_id in job_ids:
         topic = f"/topic/{job_id}.*.*.progress"
         logger.debug(f"Subscribing to {topic}")
@@ -722,15 +930,21 @@ async def monitor_jobs(
     # Track completed jobs
     completed_jobs = set()
     timed_out = False
-    final_statuses = {}
+    final_statuses: Dict[str, str] = {}
+
+    # Use tqdm batch bar only when no custom callback is provided.
+    _use_tqdm = progress_callback is None
 
     try:
-        with tqdm(
-            total=len(jobs), desc=f"Monitoring {len(jobs)} jobs", leave=True
-        ) as pbar:
+        pbar_ctx = (
+            tqdm(total=len(jobs), desc=f"Monitoring {len(jobs)} jobs", leave=True)
+            if _use_tqdm
+            else None
+        )
+        with (pbar_ctx if pbar_ctx is not None else _NullContext()) as pbar:
             while len(completed_jobs) < len(jobs) and not timed_out:
                 # Check for timeout
-                elapsed_since_activity = asyncio.get_event_loop().time() - last_activity
+                elapsed_since_activity = loop.time() - last_activity
 
                 # Check if listener has received any messages recently
                 if listener.last_message_time is not None:
@@ -762,15 +976,16 @@ async def monitor_jobs(
                     timed_out = True
                     break
 
-                # Update display with status distribution
-                status_display = " | ".join(
-                    [
-                        f"{status}: {count}"
-                        for status, count in status_counts.items()
-                        if count > 0
-                    ]
-                )
-                pbar.set_description(f"Jobs: {status_display}")
+                # Update display with status distribution (tqdm path only)
+                if pbar is not None:
+                    status_display = " | ".join(
+                        [
+                            f"{status}: {count}"
+                            for status, count in status_counts.items()
+                            if count > 0
+                        ]
+                    )
+                    pbar.set_description(f"Jobs: {status_display}")
 
                 # Check for newly completed jobs
                 for job_id in job_ids:
@@ -780,10 +995,11 @@ async def monitor_jobs(
                     ):
                         logger.info(f"Job {job_id} completed, updating progress bar")
                         completed_jobs.add(job_id)
-                        pbar.update(1)  # Increment progress bar
+                        if pbar is not None:
+                            pbar.update(1)  # Increment progress bar
 
                 # Also check job status directly with the API periodically (every 5s)
-                current_time = asyncio.get_event_loop().time()
+                current_time = loop.time()
                 if int(current_time) % 5 == 0:
                     logger.debug("Performing periodic API status check")
                     for job_id in job_ids:
@@ -838,14 +1054,13 @@ async def monitor_jobs(
                 final_statuses[job_id] = f"Error: {e}"
 
     finally:
-        # Clean up subscriptions
+        # Clean up subscriptions using the same IDs used when subscribing.
         logger.debug("Cleaning up subscriptions and listener")
         try:
             for job_id in job_ids:
-                for i in range(len(patterns)):
-                    sub_id = f"{listener.uid}-{job_id}-{i}"
-                    logger.debug(f"Unsubscribing from ID {sub_id}")
-                    connection.unsubscribe(id=sub_id)
+                sub_id = f"{listener.uid}-{job_id}"
+                logger.debug(f"Unsubscribing from ID {sub_id}")
+                connection.unsubscribe(id=sub_id)
             connection.remove_listener(listener)
         except Exception as e:
             logger.debug(

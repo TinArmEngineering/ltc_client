@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch, Mock
 
 from ltc_client.helpers import (
     ProgressListener,
+    ProgressEvent,
+    TqdmProgressReporter,
     async_job_monitor,
     Job,
     Machine,
@@ -151,49 +153,39 @@ async def test_monitor_jobs_handles_dict_returns():
     job2.id = "job-456"
     jobs = [job1, job2]
 
-    # Mock TqdmUpTo to avoid progress bar display
-    class DummyPbar:
-        def __init__(self, total, desc, leave=True):
-            self.total = total
-            self.desc = desc
-            self.n = 0
+    # Collect progress events instead of using tqdm
+    events = []
+    monitor_task = asyncio.create_task(
+        monitor_jobs(api, jobs, conn, progress_callback=events.append)
+    )
 
-        def __enter__(self):
-            return self
+    # Let the function start and register listeners
+    await asyncio.sleep(0.1)
 
-        def __exit__(self, *args):
-            pass
+    # Find the registered listener
+    assert len(conn.listeners) > 0, "No listener registered"
+    listener = conn.listeners[0]
 
-        def update(self, n=1):
-            self.n += n
+    # Simulate completion messages for both jobs
+    for job in jobs:
+        headers = [(b"destination", f"/topic/{job.id}.worker.progress".encode())]
+        payload = {"status": JOB_STATUS["Complete"]}
+        message = json.dumps(payload).encode()
+        frame = SimpleNamespace(header=headers, message=message)
+        listener.on_message(frame)
 
-    with patch("ltc_client.helpers.TqdmUpTo", DummyPbar):
-        # This would have failed with "TypeError: unhashable type: 'dict'"
-        # with the original implementation using asyncio.gather()
-        monitor_task = asyncio.create_task(monitor_jobs(api, jobs, conn))
+    # Wait for monitor to complete
+    result = await asyncio.wait_for(monitor_task, timeout=2.0)
 
-        # Let the function start and register listeners
-        await asyncio.sleep(0.1)
+    # Verify results
+    assert len(result) == 2
+    assert result[job1.id] == STATUS_JOB[JOB_STATUS["Complete"]]
+    assert result[job2.id] == STATUS_JOB[JOB_STATUS["Complete"]]
 
-        # Find the registered listener
-        assert len(conn.listeners) > 0, "No listener registered"
-        listener = conn.listeners[0]
-
-        # Simulate completion messages for both jobs
-        for job in jobs:
-            headers = [(b"destination", f"/topic/{job.id}.worker.progress".encode())]
-            payload = {"status": JOB_STATUS["Complete"]}
-            message = json.dumps(payload).encode()
-            frame = SimpleNamespace(header=headers, message=message)
-            listener.on_message(frame)
-
-        # Wait for monitor to complete
-        result = await asyncio.wait_for(monitor_task, timeout=2.0)
-
-        # Verify results
-        assert len(result) == 2
-        assert result[job1.id] == STATUS_JOB[JOB_STATUS["Complete"]]
-        assert result[job2.id] == STATUS_JOB[JOB_STATUS["Complete"]]
+    # Verify progress events were emitted
+    assert any(
+        isinstance(e, ProgressEvent) and e.kind == "status" for e in events
+    ), "Expected ProgressEvent(kind='status') in events"
 
 
 def test_progress_listener_parses_time_prefixed_json():
@@ -201,18 +193,9 @@ def test_progress_listener_parses_time_prefixed_json():
     uid = "uid-123"
     pl = ProgressListener(job, uid)
 
-    called = {}
+    received: list = []
 
-    def cb(
-        done, tsize=None, worker=None, message_type=None
-    ):  # Add message_type parameter
-        called["args"] = (
-            done,
-            tsize,
-            worker,
-        )  # Keep original tuple format for assertion
-
-    pl.callback_fn = cb
+    pl.callback_fn = received.append
 
     headers = [
         (b"subscription", uid.encode()),
@@ -225,9 +208,13 @@ def test_progress_listener_parses_time_prefixed_json():
 
     pl.on_message(frame)
 
-    assert "args" in called
-    # listener forwards numeric status as first arg; worker extracted from destination
-    assert called["args"] == (JOB_STATUS["Complete"], None, "worker")
+    assert len(received) == 1
+    event = received[0]
+    assert isinstance(event, ProgressEvent)
+    assert event.kind == "status"
+    assert event.status == JOB_STATUS["Complete"]
+    assert event.worker == "worker"
+    assert event.job_id == job.id
 
 
 @pytest.mark.asyncio
@@ -254,37 +241,25 @@ async def test_async_job_monitor_stops_on_status_message(monkeypatch):
         def subscribe(self, destination, id):
             self.subscriptions.append((destination, id))
 
-    conn = DummyConnection()
-
-    # Stub out TqdmUpTo to avoid real progress UI
-    class DummyPbar:
-        def __init__(self, total, desc, position, leave=False):
-            self.total = total
-            self.desc = desc
-            self.position = position
-            self.n = 0
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def update_to(self, b=1, bsize=1, tsize=None):
-            if tsize is not None:
-                self.total = tsize
-            self.n = b * bsize
-
-        def refresh(self):
+        def unsubscribe(self, id):
             pass
 
-    monkeypatch.setattr("ltc_client.helpers.TqdmUpTo", DummyPbar)
+        def remove_listener(self, listener):
+            if listener in self.listeners:
+                self.listeners.remove(listener)
+
+    conn = DummyConnection()
+
+    # Collect events via a custom progress_callback — no tqdm required.
+    received_events: list = []
 
     # Create job and start monitor in background
     job = Job(Machine({}, {}, {}), {}, {}, title="t-test")
     job.id = "job-123"
 
-    monitor_task = asyncio.create_task(async_job_monitor(api, job, conn, position=0))
+    monitor_task = asyncio.create_task(
+        async_job_monitor(api, job, conn, position=0, progress_callback=received_events.append)
+    )
 
     # allow monitor to run and register listener
     await asyncio.sleep(0)
@@ -309,24 +284,18 @@ async def test_async_job_monitor_stops_on_status_message(monkeypatch):
     result = await asyncio.wait_for(monitor_task, timeout=2.0)
     assert result == STATUS_JOB[JOB_STATUS["Complete"]]
 
+    # Verify a ProgressEvent was delivered to our callback
+    assert any(isinstance(e, ProgressEvent) and e.kind == "status" for e in received_events)
+
 
 def test_listener_accepts_frame_when_subscription_missing():
     job = MagicMock(id="job-1")
     uid = "uid-123"
     pl = ProgressListener(job, uid)
 
-    called = {}
+    received: list = []
 
-    def cb(
-        done, tsize=None, worker=None, message_type=None
-    ):  # Add message_type parameter
-        called["args"] = (
-            done,
-            tsize,
-            worker,
-        )  # Keep original tuple format for assertion
-
-    pl.callback_fn = cb
+    pl.callback_fn = received.append
 
     # simulate broker not setting subscription header but correct destination
     headers = [
@@ -340,5 +309,139 @@ def test_listener_accepts_frame_when_subscription_missing():
 
     pl.on_message(frame)
 
-    assert "args" in called
-    assert called["args"] == (JOB_STATUS["Complete"], None, "worker")
+    assert len(received) == 1
+    event = received[0]
+    assert isinstance(event, ProgressEvent)
+    assert event.kind == "status"
+    assert event.status == JOB_STATUS["Complete"]
+    assert event.worker == "worker"
+
+
+# ---------------------------------------------------------------------------
+# Tests for ProgressEvent and TqdmProgressReporter
+# ---------------------------------------------------------------------------
+
+def test_progress_event_dataclass_fields():
+    """ProgressEvent should be a dataclass with expected fields."""
+    event = ProgressEvent(
+        job_id="job-1",
+        worker="solver",
+        kind="progress",
+        done=42.0,
+        total=100.0,
+        raw={"done": 42, "total": 100},
+    )
+    assert event.job_id == "job-1"
+    assert event.worker == "solver"
+    assert event.kind == "progress"
+    assert event.done == 42.0
+    assert event.total == 100.0
+    assert event.status is None
+    assert event.status_name is None
+    assert event.remaining_time is None
+    assert event.raw == {"done": 42, "total": 100}
+
+
+def test_progress_listener_emits_progress_event():
+    """ProgressListener should emit ProgressEvent for done/total messages."""
+    job = MagicMock(id="job-42")
+    uid = "test-uid"
+    pl = ProgressListener(job, uid)
+
+    received: list = []
+    pl.callback_fn = received.append
+
+    headers = [
+        (b"subscription", uid.encode()),
+        (b"destination", f"/topic/{job.id}.mesher.1.progress".encode()),
+    ]
+    frame = SimpleNamespace(
+        header=headers,
+        message=json.dumps({"done": 30, "total": 100}).encode(),
+    )
+    pl.on_message(frame)
+
+    assert len(received) == 1
+    event = received[0]
+    assert isinstance(event, ProgressEvent)
+    assert event.kind == "progress"
+    assert event.done == 30
+    assert event.total == 100
+    assert event.worker == "mesher"
+    assert event.job_id == job.id
+
+
+def test_progress_listener_emits_time_remaining_event():
+    """ProgressListener should emit ProgressEvent for time-remaining messages."""
+    job = MagicMock(id="job-tr")
+    uid = "uid-tr"
+    pl = ProgressListener(job, uid)
+
+    received: list = []
+    pl.callback_fn = received.append
+
+    headers = [
+        (b"subscription", uid.encode()),
+        (b"destination", f"/topic/{job.id}.solver.1.progress".encode()),
+    ]
+    frame = SimpleNamespace(
+        header=headers,
+        message=json.dumps({"remaining": 5.5, "unit": "seconds"}).encode(),
+    )
+    pl.on_message(frame)
+
+    assert len(received) == 1
+    event = received[0]
+    assert isinstance(event, ProgressEvent)
+    assert event.kind == "time_remaining"
+    assert "5.5 seconds" in event.remaining_time
+
+
+def test_progress_listener_emits_remaining_percent_event():
+    """ProgressListener should emit ProgressEvent for remaining-percent messages."""
+    job = MagicMock(id="job-rem")
+    uid = "uid-rem"
+    pl = ProgressListener(job, uid)
+
+    received: list = []
+    pl.callback_fn = received.append
+
+    headers = [
+        (b"subscription", uid.encode()),
+        (b"destination", f"/topic/{job.id}.solver.1.progress".encode()),
+    ]
+    frame = SimpleNamespace(
+        header=headers,
+        message=json.dumps({"remaining": 25.0, "unit": "percent"}).encode(),
+    )
+    pl.on_message(frame)
+
+    assert len(received) == 1
+    event = received[0]
+    assert isinstance(event, ProgressEvent)
+    assert event.kind == "remaining"
+    assert event.done == 75   # 100 - 25
+    assert event.total == 100
+
+
+def test_tqdm_progress_reporter_handles_progress_event():
+    """TqdmProgressReporter should update bar.n on progress events."""
+    reporter = TqdmProgressReporter(desc="Test", total=100, position=0, leave=False)
+    reporter(ProgressEvent(job_id="j", worker="w", kind="progress", done=60, total=100))
+    assert reporter._bar.n == 60
+    reporter.close()
+
+
+def test_tqdm_progress_reporter_handles_time_remaining_event():
+    """TqdmProgressReporter should set postfix on time_remaining events."""
+    reporter = TqdmProgressReporter(desc="Test", total=100, position=0, leave=False)
+    reporter(ProgressEvent(job_id="j", worker="w", kind="time_remaining", remaining_time="3.0 seconds"))
+    # No exception means it worked; postfix should contain the ETA
+    reporter.close()
+
+
+def test_tqdm_progress_reporter_context_manager():
+    """TqdmProgressReporter should support use as a context manager."""
+    with TqdmProgressReporter(desc="CM test", leave=False) as reporter:
+        reporter(ProgressEvent(job_id="j", worker="w", kind="progress", done=50, total=100))
+        assert reporter._bar.n == 50
