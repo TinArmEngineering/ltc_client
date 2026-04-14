@@ -51,7 +51,7 @@ class ProgressEvent:
 
     job_id: str
     worker: str
-    kind: str
+    kind: Literal["progress", "status", "remaining", "time_remaining"]
     done: Optional[float] = None
     total: Optional[float] = None
     status: Optional[int] = None
@@ -429,7 +429,7 @@ class TqdmProgressReporter:
     ----------
     desc : str
         Progress bar description label.
-    total : int
+    total : float
         Total units for the progress bar.
     position : int
         Vertical position of the bar (for multiple concurrent bars).
@@ -443,7 +443,7 @@ class TqdmProgressReporter:
     >>> reporter.close()
     """
 
-    def __init__(self, desc: str = "Job", total: int = 100, position: int = 0, leave: bool = False):
+    def __init__(self, desc: str = "Job", total: float = 100, position: int = 0, leave: bool = False):
         self._bar = TqdmUpTo(total=total, desc=desc, position=position, leave=leave)
 
     def __call__(self, event: "ProgressEvent") -> None:
@@ -612,7 +612,11 @@ class JobBatchProgressListener(StompListener):
 
     def on_message(self, frame):
         # Log every frame received regardless of content
-        self.last_message_time = asyncio.get_event_loop_policy().get_event_loop().time()
+        try:
+            self.last_message_time = asyncio.get_running_loop().time()
+        except RuntimeError:
+            # Fallback if called outside a running loop (e.g., in tests)
+            self.last_message_time = asyncio.get_event_loop_policy().get_event_loop().time()
         self.message_count += 1
 
         # Debug raw frame data
