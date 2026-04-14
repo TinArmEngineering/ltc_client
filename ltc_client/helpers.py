@@ -443,7 +443,13 @@ class TqdmProgressReporter:
     >>> reporter.close()
     """
 
-    def __init__(self, desc: str = "Job", total: float = 100, position: int = 0, leave: bool = False):
+    def __init__(
+        self,
+        desc: str = "Job",
+        total: float = 100,
+        position: int = 0,
+        leave: bool = False,
+    ):
         self._bar = TqdmUpTo(total=total, desc=desc, position=position, leave=leave)
 
     def __call__(self, event: "ProgressEvent") -> None:
@@ -616,7 +622,9 @@ class JobBatchProgressListener(StompListener):
             self.last_message_time = asyncio.get_running_loop().time()
         except RuntimeError:
             # Fallback if called outside a running loop (e.g., in tests)
-            self.last_message_time = asyncio.get_event_loop_policy().get_event_loop().time()
+            self.last_message_time = (
+                asyncio.get_event_loop_policy().get_event_loop().time()
+            )
         self.message_count += 1
 
         # Debug raw frame data
@@ -945,7 +953,7 @@ async def monitor_jobs(
             if _use_tqdm
             else None
         )
-        with (pbar_ctx if pbar_ctx is not None else _NullContext()) as pbar:
+        with pbar_ctx if pbar_ctx is not None else _NullContext() as pbar:
             while len(completed_jobs) < len(jobs) and not timed_out:
                 # Check for timeout
                 elapsed_since_activity = loop.time() - last_activity

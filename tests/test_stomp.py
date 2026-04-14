@@ -258,7 +258,9 @@ async def test_async_job_monitor_stops_on_status_message(monkeypatch):
     job.id = "job-123"
 
     monitor_task = asyncio.create_task(
-        async_job_monitor(api, job, conn, position=0, progress_callback=received_events.append)
+        async_job_monitor(
+            api, job, conn, position=0, progress_callback=received_events.append
+        )
     )
 
     # allow monitor to run and register listener
@@ -285,7 +287,9 @@ async def test_async_job_monitor_stops_on_status_message(monkeypatch):
     assert result == STATUS_JOB[JOB_STATUS["Complete"]]
 
     # Verify a ProgressEvent was delivered to our callback
-    assert any(isinstance(e, ProgressEvent) and e.kind == "status" for e in received_events)
+    assert any(
+        isinstance(e, ProgressEvent) and e.kind == "status" for e in received_events
+    )
 
 
 def test_listener_accepts_frame_when_subscription_missing():
@@ -320,6 +324,7 @@ def test_listener_accepts_frame_when_subscription_missing():
 # ---------------------------------------------------------------------------
 # Tests for ProgressEvent and TqdmProgressReporter
 # ---------------------------------------------------------------------------
+
 
 def test_progress_event_dataclass_fields():
     """ProgressEvent should be a dataclass with expected fields."""
@@ -420,7 +425,7 @@ def test_progress_listener_emits_remaining_percent_event():
     event = received[0]
     assert isinstance(event, ProgressEvent)
     assert event.kind == "remaining"
-    assert event.done == 75   # 100 - 25
+    assert event.done == 75  # 100 - 25
     assert event.total == 100
 
 
@@ -435,7 +440,11 @@ def test_tqdm_progress_reporter_handles_progress_event():
 def test_tqdm_progress_reporter_handles_time_remaining_event():
     """TqdmProgressReporter should set postfix on time_remaining events."""
     reporter = TqdmProgressReporter(desc="Test", total=100, position=0, leave=False)
-    reporter(ProgressEvent(job_id="j", worker="w", kind="time_remaining", remaining_time="3.0 seconds"))
+    reporter(
+        ProgressEvent(
+            job_id="j", worker="w", kind="time_remaining", remaining_time="3.0 seconds"
+        )
+    )
     # No exception means it worked; postfix should contain the ETA
     reporter.close()
 
@@ -443,5 +452,7 @@ def test_tqdm_progress_reporter_handles_time_remaining_event():
 def test_tqdm_progress_reporter_context_manager():
     """TqdmProgressReporter should support use as a context manager."""
     with TqdmProgressReporter(desc="CM test", leave=False) as reporter:
-        reporter(ProgressEvent(job_id="j", worker="w", kind="progress", done=50, total=100))
+        reporter(
+            ProgressEvent(job_id="j", worker="w", kind="progress", done=50, total=100)
+        )
         assert reporter._bar.n == 50

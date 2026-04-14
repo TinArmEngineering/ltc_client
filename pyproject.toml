@@ -10,7 +10,7 @@ description = "Client and Worker module for Tin Arm Engineering LTC service"
 authors = [
     {name = "Martin West", email = "martin@tinarmengineering.com"}
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 readme = "README.md"
 classifiers = [
