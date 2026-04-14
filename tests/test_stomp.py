@@ -12,7 +12,6 @@ from ltc_client.helpers import (
     async_job_monitor,
     Job,
     Machine,
-    TqdmUpTo,
     monitor_jobs,
     make_stomp_connection,
 )

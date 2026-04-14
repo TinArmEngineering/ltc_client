@@ -1,18 +1,14 @@
 from .api import Quantity, NameQuantityPair
 from .api import JOB_STATUS, STATUS_JOB
 
-import random
-import requests
 import pint
 from webstompy import StompListener, StompConnection
 from websocket import create_connection
-from tqdm.auto import tqdm
 import numpy as np
 import logging
-import uuid
 import asyncio
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import uuid4
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
@@ -233,23 +229,6 @@ def make_stomp_connection(stomp_conf):
     return connection
 
 
-class TqdmUpTo(tqdm):
-    """Provides `update_to(n)` which uses `tqdm.update(delta_n)`."""
-
-    def update_to(self, b=1, bsize=1, tsize=None):
-        """
-        b  : int, optional
-            Number of blocks transferred so far [default: 1].
-        bsize  : int, optional
-            Size of each block (in tqdm units) [default: 1].
-        tsize  : int, optional
-            Total size (in tqdm units). If [default: None] remains unchanged.
-        """
-        if tsize is not None:
-            self.total = tsize
-        return self.update(b * bsize - self.n)  # also sets self.n = b * bsize
-
-
 class ProgressListener(StompListener):
     def __init__(self, job, uid):
         self.job_id = job.id
@@ -450,15 +429,20 @@ class TqdmProgressReporter:
         position: int = 0,
         leave: bool = False,
     ):
-        self._bar = TqdmUpTo(total=total, desc=desc, position=position, leave=leave)
+        from tqdm.auto import tqdm
+
+        self._bar = tqdm(total=total, desc=desc, position=position, leave=leave)
 
     def __call__(self, event: "ProgressEvent") -> None:
         """Handle a single :class:`ProgressEvent`."""
         if event.kind in ("progress", "remaining") and event.done is not None:
             if event.total is not None and self._bar.total != event.total:
                 self._bar.total = event.total
-            self._bar.n = max(self._bar.n, int(event.done))
-            self._bar.refresh()
+            new_n = max(self._bar.n, int(event.done))
+            if new_n > self._bar.n:
+                self._bar.update(new_n - self._bar.n)
+            else:
+                self._bar.refresh()
         elif event.kind == "time_remaining" and event.remaining_time:
             self._bar.set_postfix_str(f"ETA {event.remaining_time}")
         elif event.kind == "status" and event.status_name:
