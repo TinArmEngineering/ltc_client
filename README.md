@@ -68,6 +68,165 @@ for idx in range(3):
     jobs.append(job)
 ```
 
+## Progress monitoring
+
+`ltc_client` supports two complementary progress-monitoring styles:
+
+1. **Default progress bars** using `tqdm` for scripts and notebooks
+2. **Structured progress events** using `ProgressEvent` callbacks for marimo,
+   Jupyter widgets, logging, or custom UIs
+
+### Default behaviour
+
+If you do not provide a callback, `async_job_monitor()` and `monitor_jobs()`
+will create `tqdm` progress bars automatically.
+
+```python
+import asyncio
+import ltc_client
+
+async def main():
+    connection = ltc_client.make_stomp_connection(config["stomp"])
+
+    status = await ltc_client.async_job_monitor(
+        api,
+        job,
+        connection,
+    )
+
+    print("Final status:", status)
+
+asyncio.run(main())
+```
+
+### Explicit `tqdm` reporter
+
+You can also provide a reporter explicitly. This is useful if you want to
+control the bar description, layout, or lifetime yourself.
+
+```python
+import asyncio
+import ltc_client
+
+async def main():
+    connection = ltc_client.make_stomp_connection(config["stomp"])
+
+    with ltc_client.TqdmProgressReporter(
+        desc=f"Job {job.title}",
+        position=0,
+    ) as reporter:
+        status = await ltc_client.async_job_monitor(
+            api,
+            job,
+            connection,
+            progress_callback=reporter,
+        )
+
+    print("Final status:", status)
+
+asyncio.run(main())
+```
+
+### Custom progress callback
+
+For marimo, Jupyter widgets, logging, or any custom UI, pass a callback that
+accepts a single `ProgressEvent`.
+
+```python
+import asyncio
+import ltc_client
+
+events = []
+
+def on_progress(event: ltc_client.ProgressEvent):
+    events.append(event)
+    print(
+        f"job={event.job_id} worker={event.worker} kind={event.kind} "
+        f"done={event.done} total={event.total} status={event.status_name}"
+    )
+
+async def main():
+    connection = ltc_client.make_stomp_connection(config["stomp"])
+
+    status = await ltc_client.async_job_monitor(
+        api,
+        job,
+        connection,
+        progress_callback=on_progress,
+    )
+
+    print("Final status:", status)
+
+asyncio.run(main())
+```
+
+### `ProgressEvent`
+
+Callbacks receive a `ProgressEvent` object with fields such as:
+
+- `job_id`
+- `worker`
+- `kind` (`"progress"`, `"status"`, `"remaining"`, `"time_remaining"`)
+- `done`
+- `total`
+- `status`
+- `status_name`
+- `remaining_time`
+- `raw`
+
+### Monitoring multiple jobs
+
+`monitor_jobs()` returns a dictionary mapping job IDs to final status names.
+If no callback is provided, a batch `tqdm` progress bar is shown automatically.
+
+```python
+import asyncio
+import ltc_client
+
+async def main():
+    connection = ltc_client.make_stomp_connection(config["stomp"])
+
+    final_statuses = await ltc_client.monitor_jobs(
+        api,
+        jobs,
+        connection,
+    )
+
+    for job_id, status in final_statuses.items():
+        print(job_id, status)
+
+asyncio.run(main())
+```
+
+### Marimo / reactive UI pattern
+
+A simple marimo-friendly pattern is to store the latest event per job and render
+your UI from that state.
+
+```python
+latest = {}
+
+def on_progress(event: ltc_client.ProgressEvent):
+    latest[event.job_id] = {
+        "worker": event.worker,
+        "kind": event.kind,
+        "done": event.done,
+        "total": event.total,
+        "status": event.status_name,
+        "remaining_time": event.remaining_time,
+    }
+
+await ltc_client.monitor_jobs(
+    api,
+    jobs,
+    connection,
+    progress_callback=on_progress,
+)
+```
+
+This keeps `ltc_client` responsible for STOMP monitoring while your marimo app
+controls presentation.
+
  4. Make a stomp connection
 ```python
  def make_connection(stomp_conf):
