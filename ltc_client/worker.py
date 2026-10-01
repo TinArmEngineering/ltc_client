@@ -216,7 +216,10 @@ class StandardWorker:
             port=queue_port,
             username=queue_user,
             password=queue_password,
-            connection_params={"ssl_options": ssl_options},
+            connection_params={
+                "ssl_options": ssl_options,
+                "virtual_host": "/webclients",
+            },
             exchange="amq.topic",
             declare_exchange=True,
             routing_key_formatter=lambda r: (
