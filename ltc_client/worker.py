@@ -287,7 +287,7 @@ class StandardWorker:
         _rabbitmq_queue_message(self._channel, self._exchange, routing_key, body)
 
     def _threaded_callback(self, ch, method_frame, _header_frame, body, args):
-        (func, conn, ch, thrds) = args
+        func, conn, ch, thrds = args
         delivery_tag = method_frame.delivery_tag
         t = threading.Thread(
             target=self._do_threaded_callback,

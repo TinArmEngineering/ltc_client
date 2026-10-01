@@ -279,6 +279,6 @@ TOTAL                      466    279    40%
 To push a release with a tag, 
 make your commits locally, don't push yet, then:
 ```
-git tag 0.2.58
-git push --atomic origin main 0.2.58
+git tag 0.2.66
+git push --atomic origin main 0.2.66
 ```

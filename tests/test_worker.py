@@ -17,9 +17,13 @@ class TestStandardWorkerLogVhost(unittest.TestCase):
         mock_handler = Mock()
 
         with (
-            patch.object(worker, "_rabbitmq_connect", return_value=connection) as connect,
+            patch.object(
+                worker, "_rabbitmq_connect", return_value=connection
+            ) as connect,
             patch.object(worker, "start_health_server"),
-            patch.object(worker, "RabbitMQHandler", return_value=mock_handler) as handler,
+            patch.object(
+                worker, "RabbitMQHandler", return_value=mock_handler
+            ) as handler,
         ):
             StandardWorker(
                 node_id="node",
