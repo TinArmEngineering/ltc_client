@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from uuid import uuid4
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
-
 logger = logging.getLogger(__name__)
 
 q = pint.get_application_registry()

@@ -7,7 +7,6 @@ from ltc_client.helpers import ProgressEvent, TqdmProgressReporter
 from ltc_client.winding_api import WindingApi
 from ltc_client.geometry_api import GeometryApi
 
-
 __title__ = "TINARM - Node creation tool for TAE workers"
 __version__ = "0.0.0"
 __author__ = "Martin West, Chris Wallis"
